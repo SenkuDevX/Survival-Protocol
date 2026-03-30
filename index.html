@@ -2,850 +2,1282 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>QuakeReady VR – Earthquake Safety Simulation</title>
+<title>Survival Protocol VR</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { background:#000; overflow:hidden; font-family:'Courier New',monospace; color:#fff; }
-canvas { display:block; }
-
-#splash {
-  position:fixed; inset:0; z-index:999;
-  background:radial-gradient(ellipse at 50% 40%, #0d1a2e 0%, #050810 100%);
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1.2rem;
-  transition:opacity .6s;
-}
-#splash.hide { opacity:0; pointer-events:none; }
-.logo { font-size:clamp(2rem,6vw,3.8rem); font-weight:900; letter-spacing:.15em;
-  background:linear-gradient(90deg,#ff6b35,#ffd166,#ff6b35); background-size:200%;
-  -webkit-background-clip:text; -webkit-text-fill-color:transparent;
-  animation:shine 2.5s linear infinite; }
-@keyframes shine{ to{background-position:200%} }
-.sub { font-size:.8rem; letter-spacing:.35em; color:#5a7fa0; text-transform:uppercase; }
-.env-row { display:flex; gap:.8rem; flex-wrap:wrap; justify-content:center; margin-top:.5rem; }
-.env-btn {
-  padding:.65rem 1.4rem; border:1px solid #ff6b3550; background:#ff6b3508;
-  color:#ffd166; font-family:'Courier New',monospace; font-size:.8rem; letter-spacing:.12em;
-  cursor:pointer; transition:.25s; text-transform:uppercase; border-radius:2px;
-}
-.env-btn:hover,.env-btn.on { background:#ff6b3525; border-color:#ff6b35; color:#fff; }
-.go-btn {
-  margin-top:.4rem; padding:.9rem 3rem; background:linear-gradient(90deg,#ff6b35,#e5521f);
-  border:none; color:#fff; font-family:'Courier New',monospace; font-size:1rem;
-  letter-spacing:.2em; cursor:pointer; font-weight:700; border-radius:3px;
-  box-shadow:0 0 28px #ff6b3545; transition:.25s;
-}
-.go-btn:hover { transform:scale(1.04); box-shadow:0 0 44px #ff6b3570; }
-.hint { font-size:.7rem; color:#3a5570; letter-spacing:.1em; margin-top:.3rem; text-align:center; max-width:420px; line-height:1.8; }
-
-#hud { position:fixed; inset:0; z-index:100; pointer-events:none; display:none; }
-#hud.on { display:block; }
-#phase-bar {
-  position:absolute; top:0; left:0; right:0; padding:.7rem 1rem;
-  background:linear-gradient(180deg,#000a 0%,transparent 100%);
-  display:flex; align-items:center; justify-content:center; gap:1rem;
-}
-.ph-tag { font-size:.58rem; letter-spacing:.35em; color:#ff6b35; background:#ff6b3510;
-  border:1px solid #ff6b3540; padding:.2rem .6rem; text-transform:uppercase; }
-.ph-name { font-size:.95rem; letter-spacing:.2em; color:#fff; text-transform:uppercase; }
-#msg-box {
-  position:absolute; bottom:70px; left:50%; transform:translateX(-50%);
-  width:min(480px,90vw); background:#000b; border:1px solid #ff6b3540;
-  border-top:2px solid #ff6b35; padding:.9rem 1.2rem; text-align:center;
-}
-#msg-tag { font-size:.55rem; letter-spacing:.35em; color:#ff6b35; margin-bottom:.35rem; text-transform:uppercase; }
-#msg-txt { font-size:.85rem; color:#e8e0d0; line-height:1.55; }
-#hp-wrap { position:absolute; bottom:20px; left:20px; display:flex; align-items:center; gap:.6rem; }
-#hp-lbl { font-size:.58rem; letter-spacing:.25em; color:#5a7fa0; text-transform:uppercase; }
-#hp-bg { width:110px; height:7px; background:#111; border:1px solid #333; }
-#hp-fill { height:100%; width:100%; background:linear-gradient(90deg,#4ecdc4,#45b7aa); transition:width .5s,background .5s; }
-#score-lbl { position:absolute; bottom:20px; right:20px; font-size:.62rem; letter-spacing:.25em; color:#5a7fa0; }
-#score-val { color:#ffd166; font-size:1rem; }
-#xhair { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:22px; height:22px; }
-#xhair::before,#xhair::after { content:''; position:absolute; background:#ff6b35cc; }
-#xhair::before { top:50%; left:0; right:0; height:1px; }
-#xhair::after  { left:50%; top:0; bottom:0; width:1px; }
-.xdot { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-  width:4px; height:4px; border-radius:50%; background:#ff6b35; }
-#ckl { position:absolute; top:54px; left:16px; background:#0009;
-  border:1px solid #333; border-left:2px solid #ff6b35; padding:.7rem .9rem; min-width:195px; }
-.ck-title { font-size:.52rem; letter-spacing:.3em; color:#ff6b35; margin-bottom:.4rem; text-transform:uppercase; }
-.ck { font-size:.72rem; color:#444; display:flex; gap:.4rem; align-items:center; margin:.25rem 0; transition:color .3s; }
-.ck::before { content:'○'; }
-.ck.done { color:#4ecdc4; }
-.ck.done::before { content:'●'; }
-#helmet-tag { position:absolute; top:54px; right:16px; font-size:.58rem;
-  letter-spacing:.18em; color:#444; background:#0009; border:1px solid #333;
-  padding:.3rem .7rem; transition:all .3s; }
-#helmet-tag.on { color:#4ecdc4; border-color:#4ecdc4; background:#4ecdc410; }
-#flash { position:fixed; inset:0; z-index:200; background:#f00; opacity:0; pointer-events:none; transition:opacity .15s; }
-#modal {
-  position:fixed; inset:0; z-index:500; background:#000d;
-  display:none; flex-direction:column; align-items:center; justify-content:center; gap:1.2rem;
-}
-#modal.on { display:flex; }
-#modal-title { font-size:2.2rem; letter-spacing:.2em; font-weight:900; text-transform:uppercase; }
-#modal-title.win { color:#4ecdc4; } #modal-title.lose { color:#ff2244; }
-#modal-body { color:#5a7fa0; font-size:.85rem; max-width:400px; text-align:center; line-height:1.75; white-space:pre-line; }
-#modal-score { color:#ffd166; font-size:1.4rem; letter-spacing:.3em; }
-#modal-btn { padding:.75rem 2.4rem; background:transparent; border:1px solid #ff6b35;
-  color:#ff6b35; font-family:'Courier New',monospace; letter-spacing:.18em;
-  font-size:.88rem; cursor:pointer; transition:.25s; }
-#modal-btn:hover { background:#ff6b3520; }
-#shake { position:fixed; inset:0; z-index:99; pointer-events:none; border:3px solid transparent; }
-#shake.on { border-color:#ff6b3570; animation:sk .14s infinite; }
-@keyframes sk {
-  0%  { transform:translate(0,0); }
-  25% { transform:translate(-3px,2px); }
-  50% { transform:translate(3px,-2px); }
-  75% { transform:translate(-2px,3px); }
-  100%{ transform:translate(2px,-3px); }
-}
-#tooltip {
-  position:fixed; top:58%; left:50%; transform:translate(-50%,-50%);
-  background:#000b; border:1px solid #ff6b3560; color:#ffd166;
-  font-size:.72rem; letter-spacing:.15em; padding:.35rem .85rem;
-  pointer-events:none; display:none; text-transform:uppercase;
-}
-#pointer-hint {
-  position:fixed; top:50%; left:50%; transform:translate(-50%,40px);
-  background:#000a; border:1px solid #ff6b3540; color:#ff6b35;
-  font-size:.65rem; letter-spacing:.15em; padding:.3rem .8rem;
-  pointer-events:none; text-align:center;
-}
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;overflow:hidden;font-family:'Share Tech Mono',monospace;color:#fff;}
+canvas{display:block;}
+#splash{position:fixed;inset:0;z-index:999;background:radial-gradient(ellipse at 50% 35%,#0a0f1a 0%,#000 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.9rem;transition:opacity .7s;overflow-y:auto;}
+#splash.hide{opacity:0;pointer-events:none;}
+.sp-emblem{width:90px;height:90px;margin-bottom:.3rem;}
+.sp-emblem svg{width:100%;height:100%;}
+.logo{font-family:'Orbitron',sans-serif;font-size:clamp(1.7rem,5vw,3rem);font-weight:900;letter-spacing:.18em;background:linear-gradient(135deg,#ff4500 0%,#ff8c00 50%,#ffd700 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:pulse-logo 3s ease-in-out infinite;}
+@keyframes pulse-logo{0%,100%{filter:brightness(1);}50%{filter:brightness(1.3);}}
+.sub{font-size:.68rem;letter-spacing:.38em;color:#5a7fa0;text-transform:uppercase;}
+.tagline{font-size:.65rem;color:#ff4500aa;letter-spacing:.18em;text-transform:uppercase;border-top:1px solid #ff450022;padding-top:.5rem;max-width:420px;text-align:center;}
+.env-label{font-size:.55rem;letter-spacing:.32em;color:#5a7fa0;text-transform:uppercase;margin-top:.4rem;}
+.env-row{display:flex;gap:.55rem;flex-wrap:wrap;justify-content:center;}
+.env-btn{padding:.5rem 1rem;border:1px solid #ff450030;background:#ff450008;color:#ff8c00;font-family:'Share Tech Mono',monospace;font-size:.72rem;letter-spacing:.08em;cursor:pointer;transition:.2s;text-transform:uppercase;border-radius:2px;line-height:1.5;text-align:center;}
+.env-btn:hover,.env-btn.on{background:#ff450020;border-color:#ff4500;color:#ffd700;}
+.go-btn{margin-top:.4rem;padding:.8rem 2.8rem;background:linear-gradient(90deg,#ff4500,#cc3300);border:none;color:#fff;font-family:'Orbitron',sans-serif;font-size:.85rem;letter-spacing:.22em;cursor:pointer;font-weight:700;border-radius:3px;box-shadow:0 0 28px #ff450055;transition:.25s;}
+.go-btn:hover{transform:scale(1.04);box-shadow:0 0 48px #ff450088;}
+#vr-btn{margin-top:.2rem;padding:.65rem 2rem;background:linear-gradient(90deg,#0066cc,#004499);border:1px solid #0088ff;color:#fff;font-family:'Orbitron',sans-serif;font-size:.75rem;letter-spacing:.18em;cursor:pointer;font-weight:700;border-radius:3px;box-shadow:0 0 20px #0066cc55;transition:.25s;display:none;}
+#vr-btn:hover{transform:scale(1.03);box-shadow:0 0 36px #0088ff88;}
+#vr-btn.ready{display:block;}
+#vr-status{font-size:.58rem;letter-spacing:.2em;color:#5a7fa0;text-align:center;margin-top:.2rem;}
+.hint{font-size:.6rem;color:#304550;letter-spacing:.08em;text-align:center;max-width:400px;line-height:2;}
+#hud{position:fixed;inset:0;z-index:100;pointer-events:none;display:none;}
+#hud.on{display:block;}
+#top-bar{position:absolute;top:0;left:0;right:0;padding:.55rem 1rem;background:linear-gradient(180deg,#000c 0%,transparent 100%);display:flex;align-items:center;justify-content:space-between;}
+.sim-name{font-family:'Orbitron',sans-serif;font-size:.65rem;letter-spacing:.28em;color:#ff4500;text-transform:uppercase;}
+.ph-wrap{display:flex;align-items:center;gap:.55rem;}
+.ph-tag{font-size:.5rem;letter-spacing:.28em;color:#ff4500;background:#ff450012;border:1px solid #ff450040;padding:.14rem .45rem;text-transform:uppercase;}
+.ph-name{font-size:.82rem;letter-spacing:.18em;color:#fff;text-transform:uppercase;font-family:'Orbitron',sans-serif;}
+#msg-box{position:absolute;bottom:62px;left:50%;transform:translateX(-50%);width:min(500px,92vw);background:#0009;border:1px solid #ff450035;border-top:2px solid #ff4500;padding:.8rem 1rem;text-align:center;}
+#msg-tag{font-size:.5rem;letter-spacing:.32em;color:#ff4500;margin-bottom:.28rem;text-transform:uppercase;}
+#msg-txt{font-size:.8rem;color:#e8e0d0;line-height:1.58;}
+#hp-wrap{position:absolute;bottom:16px;left:16px;display:flex;align-items:center;gap:.45rem;}
+#hp-lbl{font-size:.5rem;letter-spacing:.22em;color:#5a7fa0;text-transform:uppercase;}
+#hp-bg{width:115px;height:6px;background:#0a0a0a;border:1px solid #222;}
+#hp-fill{height:100%;width:100%;background:linear-gradient(90deg,#00e5cc,#00b89c);transition:width .5s,background .5s;}
+#score-wrap{position:absolute;bottom:16px;right:16px;text-align:right;}
+#score-lbl{font-size:.5rem;letter-spacing:.22em;color:#5a7fa0;display:block;text-transform:uppercase;}
+#score-val{color:#ffd700;font-size:1rem;font-family:'Orbitron',sans-serif;}
+#ckl{position:absolute;top:50px;left:13px;background:#0009;border:1px solid #222;border-left:2px solid #ff4500;padding:.55rem .8rem;min-width:185px;}
+.ck-title{font-size:.48rem;letter-spacing:.28em;color:#ff4500;margin-bottom:.35rem;text-transform:uppercase;}
+.ck{font-size:.68rem;color:#333;display:flex;gap:.35rem;align-items:center;margin:.2rem 0;transition:color .3s;}
+.ck::before{content:'o';}
+.ck.done{color:#00e5cc;}
+.ck.done::before{content:'*';}
+#helmet-hud{position:absolute;top:50px;right:13px;font-size:.52rem;letter-spacing:.16em;color:#444;background:#0009;border:1px solid #222;border-right:2px solid #444;padding:.28rem .6rem;transition:all .3s;}
+#helmet-hud.on{color:#00e5cc;border-color:#00e5cc;background:#00e5cc10;}
+#xhair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px;}
+#xhair::before,#xhair::after{content:'';position:absolute;background:#ff450099;}
+#xhair::before{top:50%;left:0;right:0;height:1px;}
+#xhair::after{left:50%;top:0;bottom:0;width:1px;}
+.xdot{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:3px;border-radius:50%;background:#ff4500;}
+#flash{position:fixed;inset:0;z-index:200;background:#f00;opacity:0;pointer-events:none;transition:opacity .15s;}
+#smoke-ov{position:fixed;inset:0;z-index:190;background:rgba(40,20,10,0);pointer-events:none;transition:background 2s;}
+#smoke-ov.on{background:rgba(40,20,10,0.38);}
+#shake{position:fixed;inset:0;z-index:99;pointer-events:none;border:3px solid transparent;}
+#shake.on{border-color:#ff450060;animation:sk .12s infinite;}
+#shake.fire{border-color:#ff660070;animation:sk .12s infinite,ff .5s infinite;}
+@keyframes sk{0%{transform:translate(0,0);}25%{transform:translate(-4px,2px);}50%{transform:translate(3px,-3px);}75%{transform:translate(-2px,4px);}100%{transform:translate(3px,-2px);}}
+@keyframes ff{0%,100%{box-shadow:0 0 40px #ff450055 inset;}50%{box-shadow:0 0 60px #ff220055 inset;}}
+#tooltip{position:fixed;top:56%;left:50%;transform:translate(-50%,-50%);background:#000b;border:1px solid #ff450055;color:#ffd700;font-size:.68rem;letter-spacing:.14em;padding:.28rem .75rem;pointer-events:none;display:none;text-transform:uppercase;}
+#ptr-hint{position:fixed;top:50%;left:50%;transform:translate(-50%,42px);background:#000a;border:1px solid #ff450040;color:#ff4500;font-size:.62rem;letter-spacing:.13em;padding:.26rem .72rem;pointer-events:none;text-align:center;}
+#modal{position:fixed;inset:0;z-index:500;background:#000d;display:none;flex-direction:column;align-items:center;justify-content:center;gap:1rem;}
+#modal.on{display:flex;}
+#modal-title{font-family:'Orbitron',sans-serif;font-size:1.9rem;letter-spacing:.2em;font-weight:900;text-transform:uppercase;}
+#modal-title.win{color:#00e5cc;}
+#modal-title.lose{color:#ff2244;}
+#modal-body{color:#5a7fa0;font-size:.8rem;max-width:420px;text-align:center;line-height:1.8;white-space:pre-line;}
+#modal-score{color:#ffd700;font-size:1.2rem;letter-spacing:.28em;font-family:'Orbitron',sans-serif;}
+#modal-btn{padding:.68rem 2rem;background:transparent;border:1px solid #ff4500;color:#ff4500;font-family:'Share Tech Mono',monospace;letter-spacing:.16em;font-size:.82rem;cursor:pointer;transition:.25s;}
+#modal-btn:hover{background:#ff450020;}
+/* VR controller indicators */
+#ctrl-status{position:absolute;top:80px;right:13px;font-size:.48rem;letter-spacing:.18em;color:#444;background:#0009;border:1px solid #222;padding:.22rem .5rem;margin-top:.3rem;line-height:1.8;}
+#ctrl-status .detected{color:#00e5cc;}
 </style>
 </head>
 <body>
-
 <div id="splash">
-  <div class="logo">QUAKEREADY VR</div>
-  <div class="sub">Earthquake Safety Training Simulation</div>
+  <div class="sp-emblem">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="50,5 95,95 5,95" fill="none" stroke="#ff4500" stroke-width="2.5" opacity="0.8"/>
+      <polygon points="50,18 83,88 17,88" fill="none" stroke="#ff8c00" stroke-width="1.5" opacity="0.5"/>
+      <circle cx="50" cy="65" r="10" fill="none" stroke="#ffd700" stroke-width="2"/>
+      <line x1="50" y1="30" x2="50" y2="52" stroke="#ffd700" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="50" cy="59" r="2.5" fill="#ffd700"/>
+    </svg>
+  </div>
+  <div class="logo">SURVIVAL PROTOCOL</div>
+  <div class="sub">Disaster Safety Training - VR Simulation</div>
+  <div class="tagline">Choose your disaster scenario and train for survival</div>
+  <div class="env-label">Select Disaster Scenario</div>
   <div class="env-row">
-    <button class="env-btn on" data-e="bedroom">🛏 Bedroom</button>
-    <button class="env-btn" data-e="living">🛋 Living Room</button>
-    <button class="env-btn" data-e="office">💼 Office</button>
-    <button class="env-btn" data-e="random">🎲 Random</button>
+    <button class="env-btn on" data-e="bedroom">Bedroom<br><small style="font-size:.5rem;color:#666">Earthquake</small></button>
+    <button class="env-btn" data-e="living">Living Room<br><small style="font-size:.5rem;color:#666">Earthquake</small></button>
+    <button class="env-btn" data-e="office">Office<br><small style="font-size:.5rem;color:#666">Earthquake</small></button>
+    <button class="env-btn" data-e="fire">Warehouse<br><small style="font-size:.5rem;color:#666">Fire Disaster</small></button>
+    <button class="env-btn" data-e="random">Random</button>
   </div>
-  <button class="go-btn" id="go">▶ ENTER SIMULATION</button>
-  <div class="hint">
-    WASD / Arrow Keys = Move &nbsp;|&nbsp; Mouse = Look &nbsp;|&nbsp; Click canvas to lock pointer<br>
-    Click on glowing objects to interact
-  </div>
+  <button class="go-btn" id="go">ENTER SIMULATION</button>
+  <button id="vr-btn">ENTER VR</button>
+  <div id="vr-status">Checking VR support...</div>
+  <div class="hint">WASD / Arrow Keys / Left Stick = Move | Mouse / Right Stick = Look<br>Click / Right Trigger = Interact | A/X Button = Interact in VR</div>
 </div>
-
 <div id="hud">
-  <div id="phase-bar">
-    <span class="ph-tag">PHASE</span>
-    <span class="ph-name" id="ph-name">Idle</span>
+  <div id="top-bar">
+    <span class="sim-name">SURVIVAL PROTOCOL</span>
+    <div class="ph-wrap"><span class="ph-tag">PHASE</span><span class="ph-name" id="ph-name">Standby</span></div>
   </div>
   <div id="ckl">
-    <div class="ck-title">Safety Checklist</div>
-    <div class="ck" id="ck-cover">Take Cover Under Desk</div>
-    <div class="ck" id="ck-helmet">Wear Safety Helmet</div>
+    <div class="ck-title">Objectives</div>
+    <div class="ck" id="ck-cover">Take Cover</div>
+    <div class="ck" id="ck-helmet">Wear Helmet</div>
     <div class="ck" id="ck-heal">Use First Aid Kit</div>
     <div class="ck" id="ck-exit">Exit Building</div>
   </div>
-  <div id="helmet-tag">⛑ HELMET: NOT WORN</div>
-  <div id="msg-box">
-    <div id="msg-tag">Guidance</div>
-    <div id="msg-txt">Look around and explore your surroundings.</div>
+  <div id="helmet-hud">HELMET: OFF</div>
+  <div id="ctrl-status">
+    <div id="ctrl-l">L CTRL: <span>--</span></div>
+    <div id="ctrl-r">R CTRL: <span>--</span></div>
   </div>
-  <div id="hp-wrap">
-    <span id="hp-lbl">Health</span>
-    <div id="hp-bg"><div id="hp-fill"></div></div>
-  </div>
-  <div id="score-lbl">SCORE: <span id="score-val">0</span></div>
+  <div id="msg-box"><div id="msg-tag">Guidance</div><div id="msg-txt">Look around and explore.</div></div>
+  <div id="hp-wrap"><span id="hp-lbl">Health</span><div id="hp-bg"><div id="hp-fill"></div></div></div>
+  <div id="score-wrap"><span id="score-lbl">Score</span><span id="score-val">0</span></div>
   <div id="xhair"><div class="xdot"></div></div>
 </div>
-
 <div id="tooltip"></div>
-<div id="pointer-hint">Click the screen to lock mouse &amp; look around</div>
+<div id="ptr-hint">Click the screen to lock mouse · VR: press Trigger to interact</div>
 <div id="flash"></div>
+<div id="smoke-ov"></div>
 <div id="shake"></div>
-
 <div id="modal">
-  <div id="modal-title">—</div>
-  <div id="modal-body">—</div>
+  <div id="modal-title">-</div>
+  <div id="modal-body">-</div>
   <div id="modal-score">Score: 0</div>
-  <button id="modal-btn">↻ RESTART</button>
+  <button id="modal-btn">RESTART</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-// ── RENDERER ──────────────────────────────────────────────────
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// ─── RENDERER ───────────────────────────────────────────────────────────────
+var renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.xr.enabled = true; // ENABLE WebXR
 document.body.appendChild(renderer.domElement);
 
-const scene  = new THREE.Scene();
-scene.background = new THREE.Color(0x1a0f0a);
-scene.fog = new THREE.Fog(0x1a0f0a, 10, 25);
+var scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0a0806);
+scene.fog=new THREE.Fog(0x0a0806,8,22);
+var camera=new THREE.PerspectiveCamera(72,window.innerWidth/window.innerHeight,0.05,50);
+camera.position.set(0,1.6,2.5);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.05, 50);
-camera.position.set(0, 1.6, 2.5);
-scene.add(camera);
+// Player rig (camera container for VR)
+var playerRig = new THREE.Group();
+playerRig.add(camera);
+scene.add(playerRig);
 
-window.addEventListener('resize', () => {
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  camera.aspect = window.innerWidth / window.innerHeight;
+window.addEventListener('resize',function(){
+  renderer.setSize(window.innerWidth,window.innerHeight);
+  camera.aspect=window.innerWidth/window.innerHeight;
   camera.updateProjectionMatrix();
 });
 
-// ── POINTER LOCK ──────────────────────────────────────────────
-let yaw = 0, pitch = 0, pointerLocked = false;
-const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+// ─── VR SETUP ────────────────────────────────────────────────────────────────
+var vrMode = false;
+var vrSession = null;
+var controllers = [null, null]; // [left, right]
+var controllerGrips = [null, null];
+var controllerRays = [null, null]; // visual ray lines
+var controllerConnected = [false, false];
+var triggerPressed = [false, false];
+var triggerWasPressed = [false, false];
+var thumbstickDeadzone = 0.2;
 
-renderer.domElement.addEventListener('click', () => {
-  renderer.domElement.requestPointerLock();
+// VR Controller interaction state
+var vrInteractCooldown = 0;
+
+function setupVR() {
+  if (!navigator.xr) {
+    document.getElementById('vr-status').textContent = 'WebXR not supported in this browser.';
+    return;
+  }
+  navigator.xr.isSessionSupported('immersive-vr').then(function(supported) {
+    if (supported) {
+      document.getElementById('vr-btn').classList.add('ready');
+      document.getElementById('vr-status').textContent = '✓ VR Headset Detected — Ready!';
+      document.getElementById('vr-status').style.color = '#00e5cc';
+    } else {
+      document.getElementById('vr-status').textContent = 'No VR headset detected. Playing in desktop mode.';
+    }
+  }).catch(function(e) {
+    document.getElementById('vr-status').textContent = 'VR check failed: ' + e.message;
+  });
+}
+
+function enterVR() {
+  navigator.xr.requestSession('immersive-vr', {
+    optionalFeatures: ['local-floor','bounded-floor','hand-tracking']
+  }).then(function(session) {
+    vrSession = session;
+    vrMode = true;
+    renderer.xr.setSession(session);
+    document.getElementById('vr-status').textContent = 'VR Active!';
+
+    session.addEventListener('end', function() {
+      vrMode = false;
+      vrSession = null;
+      document.getElementById('vr-status').textContent = 'VR session ended.';
+    });
+
+    setupVRControllers();
+  }).catch(function(e) {
+    alert('Failed to enter VR: ' + e.message);
+  });
+}
+
+function setupVRControllers() {
+  // Remove old controllers
+  controllers.forEach(function(c){ if(c) playerRig.remove(c); });
+  controllerGrips.forEach(function(c){ if(c) playerRig.remove(c); });
+
+  for (var i = 0; i < 2; i++) {
+    (function(idx) {
+      var ctrl = renderer.xr.getController(idx);
+      ctrl.userData.index = idx;
+
+      ctrl.addEventListener('connected', function(e) {
+        controllerConnected[idx] = true;
+        var hand = e.data.handedness === 'left' ? 'L' : 'R';
+        var el = document.getElementById('ctrl-' + (idx===0?'l':'r'));
+        if (el) el.innerHTML = hand + ' CTRL: <span class="detected">✓ ON</span>';
+        // Add ray pointer visual
+        var rayGeo = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(0,0,0), new THREE.Vector3(0,0,-3)
+        ]);
+        var rayMat = new THREE.LineBasicMaterial({color: idx===1?0xff4500:0x00e5cc, transparent:true, opacity:0.7});
+        var ray = new THREE.Line(rayGeo, rayMat);
+        ctrl.add(ray);
+        controllerRays[idx] = ray;
+
+        // Add controller body visual
+        var bodyGeo = new THREE.BoxGeometry(0.04, 0.04, 0.12);
+        var bodyMat = new THREE.MeshStandardMaterial({color:0x333333, roughness:0.5, metalness:0.8});
+        var body = new THREE.Mesh(bodyGeo, bodyMat);
+        body.position.set(0, 0, -0.03);
+        ctrl.add(body);
+
+        // Add glow dot at tip
+        var dotGeo = new THREE.SphereGeometry(0.012, 8, 8);
+        var dotMat = new THREE.MeshStandardMaterial({
+          color: idx===1?0xff4500:0x00e5cc,
+          emissive: new THREE.Color(idx===1?0xff4500:0x00e5cc),
+          emissiveIntensity: 1.0
+        });
+        var dot = new THREE.Mesh(dotGeo, dotMat);
+        dot.position.set(0, 0, -3);
+        ctrl.add(dot);
+      });
+
+      ctrl.addEventListener('disconnected', function() {
+        controllerConnected[idx] = false;
+        var el = document.getElementById('ctrl-' + (idx===0?'l':'r'));
+        if (el) el.innerHTML = (idx===0?'L':'R') + ' CTRL: <span>--</span>';
+      });
+
+      // Squeeze / select events for button press interaction
+      ctrl.addEventListener('selectstart', function() {
+        triggerPressed[idx] = true;
+      });
+      ctrl.addEventListener('selectend', function() {
+        triggerPressed[idx] = false;
+      });
+
+      playerRig.add(ctrl);
+      controllers[idx] = ctrl;
+
+      // Grip object
+      var grip = renderer.xr.getControllerGrip(idx);
+      playerRig.add(grip);
+      controllerGrips[idx] = grip;
+    })(i);
+  }
+}
+
+// ─── POINTER LOCK (Desktop) ──────────────────────────────────────────────────
+var yaw=0,pitch=0,locked=false;
+var euler=new THREE.Euler(0,0,0,'YXZ');
+renderer.domElement.addEventListener('click',function(){
+  if (!vrMode) renderer.domElement.requestPointerLock();
 });
-document.addEventListener('pointerlockchange', () => {
-  pointerLocked = !!document.pointerLockElement;
-  document.getElementById('pointer-hint').style.display = pointerLocked ? 'none' : 'block';
+document.addEventListener('pointerlockchange',function(){
+  locked=!!document.pointerLockElement;
+  document.getElementById('ptr-hint').style.display=locked?'none':'block';
 });
-document.addEventListener('mousemove', e => {
-  if (!pointerLocked) return;
-  yaw   -= e.movementX * 0.002;
-  pitch -= e.movementY * 0.002;
-  pitch  = Math.max(-1.2, Math.min(1.2, pitch));
-  euler.set(pitch, yaw, 0, 'YXZ');
+document.addEventListener('mousemove',function(e){
+  if(!locked||vrMode)return;
+  yaw-=e.movementX*0.002;
+  pitch-=e.movementY*0.002;
+  pitch=Math.max(-1.1,Math.min(1.1,pitch));
+  euler.set(pitch,yaw,0,'YXZ');
   camera.quaternion.setFromEuler(euler);
 });
 
-// ── KEYBOARD ──────────────────────────────────────────────────
-const keys = {};
-document.addEventListener('keydown', e => { keys[e.code] = true; });
-document.addEventListener('keyup',   e => { keys[e.code] = false; });
+// ─── MOVEMENT ────────────────────────────────────────────────────────────────
+var keys={};
+document.addEventListener('keydown',function(e){keys[e.code]=true;});
+document.addEventListener('keyup',function(e){keys[e.code]=false;});
+var bounds={minX:-3,maxX:3,minZ:-3,maxZ:3};
+var coveringUnderTable=false,coverY=1.6,normalY=1.6,underTableY=0.52;
 
-// Bounds (set per room)
-const bounds = { minX: -3, maxX: 3, minZ: -3, maxZ: 3 };
+// Gamepad state (non-VR gamepads + VR controllers via Gamepad API)
+var gamepads = {};
+window.addEventListener('gamepadconnected', function(e) {
+  gamepads[e.gamepad.index] = e.gamepad;
+  console.log('Gamepad connected:', e.gamepad.id);
+});
+window.addEventListener('gamepaddisconnected', function(e) {
+  delete gamepads[e.gamepad.index];
+});
 
-function handleMovement(dt) {
-  if (!pointerLocked) return;
-  let mx = 0, mz = 0;
-  if (keys['KeyW'] || keys['ArrowUp'])    mz -= 1;
-  if (keys['KeyS'] || keys['ArrowDown'])  mz += 1;
-  if (keys['KeyA'] || keys['ArrowLeft'])  mx -= 1;
-  if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
-  if (mx === 0 && mz === 0) return;
-
-  const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
-  const right   = new THREE.Vector3( Math.cos(yaw), 0, -Math.sin(yaw));
-  const move    = forward.multiplyScalar(-mz * 3.5 * dt).add(right.multiplyScalar(mx * 3.5 * dt));
-  camera.position.add(move);
-  camera.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, camera.position.x));
-  camera.position.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, camera.position.z));
-  camera.position.y = 1.6;
+// Read gamepad axes/buttons each frame
+var gpMoveX=0, gpMoveZ=0, gpLookX=0, gpLookY=0;
+var gpTriggerPrev=false;
+function pollGamepads() {
+  var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  gpMoveX=0; gpMoveZ=0; gpLookX=0; gpLookY=0;
+  var triggerNow = false;
+  for (var i=0; i<pads.length; i++) {
+    var gp = pads[i];
+    if (!gp) continue;
+    // Left stick: axes 0,1
+    var lx = gp.axes[0]||0, ly = gp.axes[1]||0;
+    if (Math.abs(lx) > thumbstickDeadzone) gpMoveX += lx;
+    if (Math.abs(ly) > thumbstickDeadzone) gpMoveZ += ly;
+    // Right stick: axes 2,3
+    var rx = gp.axes[2]||0, ry = gp.axes[3]||0;
+    if (Math.abs(rx) > thumbstickDeadzone) gpLookX += rx;
+    if (Math.abs(ry) > thumbstickDeadzone) gpLookY += ry;
+    // Right trigger = button 7, Right bumper = 5, A = 0, X = 2
+    if (gp.buttons[7]&&gp.buttons[7].pressed) triggerNow=true;
+    if (gp.buttons[0]&&gp.buttons[0].pressed) triggerNow=true;
+    if (gp.buttons[2]&&gp.buttons[2].pressed) triggerNow=true;
+  }
+  // Trigger edge detect (desktop gamepad interact)
+  if (triggerNow && !gpTriggerPrev && !vrMode) {
+    var h = getHit();
+    if (h && h.userData && h.userData.type) interact(h);
+  }
+  gpTriggerPrev = triggerNow;
 }
 
-// ── RAYCASTER ────────────────────────────────────────────────
-const raycaster  = new THREE.Raycaster();
-const screenCtr  = new THREE.Vector2(0, 0);
-const interactive = [];
+function handleMovement(dt){
+  // Desktop keyboard
+  if(!vrMode){
+    var mx=0,mz=0;
+    if(keys['KeyW']||keys['ArrowUp'])mz-=1;
+    if(keys['KeyS']||keys['ArrowDown'])mz+=1;
+    if(keys['KeyA']||keys['ArrowLeft'])mx-=1;
+    if(keys['KeyD']||keys['ArrowRight'])mx+=1;
+    // Gamepad left stick
+    mx += gpMoveX;
+    mz += gpMoveZ;
+    // Gamepad right stick look
+    if(Math.abs(gpLookX)>0.01){ yaw -= gpLookX*dt*2.5; }
+    if(Math.abs(gpLookY)>0.01){ pitch -= gpLookY*dt*2.5; pitch=Math.max(-1.1,Math.min(1.1,pitch)); }
+    euler.set(pitch,yaw,0,'YXZ');
+    camera.quaternion.setFromEuler(euler);
+    if(mx!==0||mz!==0){
+      var fwd=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw));
+      var rgt=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+      var spd=coveringUnderTable?1.0:3.5;
+      fwd.multiplyScalar(-mz*spd*dt);
+      rgt.multiplyScalar(mx*spd*dt);
+      camera.position.add(fwd).add(rgt);
+      camera.position.x=Math.max(bounds.minX,Math.min(bounds.maxX,camera.position.x));
+      camera.position.z=Math.max(bounds.minZ,Math.min(bounds.maxZ,camera.position.z));
+    }
+    camera.position.y+=(coverY-camera.position.y)*Math.min(1,dt*5);
+  } else {
+    // VR movement via left controller thumbstick (from XRGamepad)
+    handleVRMovement(dt);
+  }
+}
 
-function getHit() {
-  raycaster.setFromCamera(screenCtr, camera);
-  const hits = raycaster.intersectObjects(interactive, true);
-  if (hits.length && hits[0].distance < 3.8) {
-    let obj = hits[0].object;
-    while (obj.parent && !obj.userData.type) obj = obj.parent;
-    return obj;
+var vrLookYaw = 0;
+var vrSnapCooldown = 0;
+function handleVRMovement(dt) {
+  var session = renderer.xr.getSession();
+  if (!session) return;
+  var frame = renderer.xr.currentFrame;
+  if (!frame) return;
+  var inputSources = session.inputSources;
+  if (!inputSources) return;
+
+  for (var i=0; i<inputSources.length; i++) {
+    var src = inputSources[i];
+    if (!src.gamepad) continue;
+    var axes = src.gamepad.axes;
+    var buttons = src.gamepad.buttons;
+
+    if (src.handedness === 'left') {
+      // Left stick: move
+      var lx = axes[2]||axes[0]||0;
+      var lz = axes[3]||axes[1]||0;
+      if (Math.abs(lx) > thumbstickDeadzone || Math.abs(lz) > thumbstickDeadzone) {
+        var headDir = new THREE.Vector3();
+        camera.getWorldDirection(headDir);
+        headDir.y = 0;
+        headDir.normalize();
+        var rightDir = new THREE.Vector3();
+        rightDir.crossVectors(headDir, new THREE.Vector3(0,1,0)).normalize();
+        var move = new THREE.Vector3();
+        move.addScaledVector(headDir, -lz * 3.0 * dt);
+        move.addScaledVector(rightDir, lx * 3.0 * dt);
+        playerRig.position.add(move);
+        // clamp
+        playerRig.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, playerRig.position.x));
+        playerRig.position.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, playerRig.position.z));
+      }
+    }
+
+    if (src.handedness === 'right') {
+      // Right stick X: snap turn
+      var rx = axes[2]||axes[0]||0;
+      if (vrSnapCooldown <= 0 && Math.abs(rx) > 0.7) {
+        playerRig.rotation.y -= Math.sign(rx) * (Math.PI / 6); // 30° snap
+        vrSnapCooldown = 0.35;
+      }
+    }
+  }
+  if (vrSnapCooldown > 0) vrSnapCooldown -= dt;
+}
+
+// ─── VR CONTROLLER RAYCASTING ────────────────────────────────────────────────
+var vrRaycaster = new THREE.Raycaster();
+var vrInteractFlag = false;
+
+function handleVRInteract() {
+  if (vrInteractCooldown > 0) return;
+
+  var session = renderer.xr.getSession();
+  if (!session) return;
+  var inputSources = session.inputSources;
+  if (!inputSources) return;
+
+  for (var i=0; i<inputSources.length; i++) {
+    var src = inputSources[i];
+    var ctrlIdx = i; // approximate mapping
+    var ctrl = controllers[ctrlIdx];
+    if (!ctrl) continue;
+
+    // Check select (trigger) pressed this frame
+    if (triggerPressed[ctrlIdx] && !triggerWasPressed[ctrlIdx]) {
+      // Cast ray from controller
+      var tempMat = new THREE.Matrix4();
+      tempMat.identity().extractRotation(ctrl.matrixWorld);
+      vrRaycaster.ray.origin.setFromMatrixPosition(ctrl.matrixWorld);
+      vrRaycaster.ray.direction.set(0,0,-1).applyMatrix4(tempMat);
+      vrRaycaster.far = 6;
+      var hits = vrRaycaster.intersectObjects(interactive, true);
+      if (hits.length > 0 && hits[0].distance < 6) {
+        var obj = hits[0].object;
+        for (var k=0; k<8; k++) {
+          if (obj && obj.userData && obj.userData.type) { interact(obj); break; }
+          if (!obj || !obj.parent) break;
+          obj = obj.parent;
+        }
+        vrInteractCooldown = 0.5;
+        beep(660,0.1,0.2);
+      }
+    }
+  }
+
+  // Also check from gaze/head (for headsets without controllers)
+  if (vrInteractFlag) {
+    vrInteractFlag = false;
+    var h = getVRGazeHit();
+    if (h) { interact(h); vrInteractCooldown = 0.5; }
+  }
+}
+
+function getVRGazeHit() {
+  vrRaycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+  vrRaycaster.far = 5;
+  var hits = vrRaycaster.intersectObjects(interactive, true);
+  if (hits.length > 0) {
+    var obj = hits[0].object;
+    for (var k=0; k<8; k++) {
+      if (obj && obj.userData && obj.userData.type) return obj;
+      if (!obj || !obj.parent) break;
+      obj = obj.parent;
+    }
   }
   return null;
 }
 
-renderer.domElement.addEventListener('click', () => {
-  if (!pointerLocked) return;
-  const h = getHit();
-  if (h && h.userData.type) interact(h);
+// VR select via session event (headset button / trigger)
+function setupVRSelectListener() {
+  var session = renderer.xr.getSession();
+  if (session) {
+    session.addEventListener('selectstart', function(e) {
+      var src = e.inputSource;
+      var idx = src && src.handedness === 'left' ? 0 : 1;
+      triggerPressed[idx] = true;
+    });
+    session.addEventListener('selectend', function(e) {
+      var src = e.inputSource;
+      var idx = src && src.handedness === 'left' ? 0 : 1;
+      triggerPressed[idx] = false;
+      triggerWasPressed[idx] = false;
+    });
+  }
+}
+
+// ─── DESKTOP RAYCASTER ───────────────────────────────────────────────────────
+var raycaster=new THREE.Raycaster();
+var screenCenter=new THREE.Vector2(0,0);
+var interactive=[];
+function getHit(){
+  raycaster.setFromCamera(screenCenter,camera);
+  var hits=raycaster.intersectObjects(interactive,true);
+  if(hits.length>0&&hits[0].distance<4.8){
+    var obj=hits[0].object;
+    for(var i=0;i<8;i++){
+      if(obj&&obj.userData&&obj.userData.type)return obj;
+      if(!obj||!obj.parent)break;
+      obj=obj.parent;
+    }
+  }
+  return null;
+}
+renderer.domElement.addEventListener('click',function(){
+  if(!locked||vrMode)return;
+  var h=getHit();
+  if(h&&h.userData&&h.userData.type)interact(h);
 });
 
-// ── AUDIO ────────────────────────────────────────────────────
-let audioCtx = null;
-function getAudio() {
-  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  return audioCtx;
+// ─── AUDIO ───────────────────────────────────────────────────────────────────
+var audioCtx=null;
+function getAudio(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
+function beep(freq,dur,vol){
+  vol=vol||0.3;
+  var c=getAudio(),o=c.createOscillator(),g=c.createGain();
+  o.frequency.value=freq;o.type='sine';
+  o.connect(g);g.connect(c.destination);
+  g.gain.setValueAtTime(vol,c.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,c.currentTime+dur);
+  o.start();o.stop(c.currentTime+dur);
 }
-function beep(freq, dur, vol = 0.3) {
-  const ctx = getAudio(), o = ctx.createOscillator(), g = ctx.createGain();
-  o.frequency.value = freq; o.type = 'sine';
-  o.connect(g); g.connect(ctx.destination);
-  g.gain.setValueAtTime(vol, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-  o.start(); o.stop(ctx.currentTime + dur);
-}
-function playRumble(dur = 10) {
-  const ctx = getAudio();
-  const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1);
-  const src = ctx.createBufferSource();
-  const flt = ctx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 120;
-  const g = ctx.createGain();
-  src.buffer = buf; src.connect(flt); flt.connect(g); g.connect(ctx.destination);
-  g.gain.setValueAtTime(0, ctx.currentTime);
-  g.gain.linearRampToValueAtTime(0.38, ctx.currentTime + 0.8);
-  g.gain.linearRampToValueAtTime(0.28, ctx.currentTime + dur - 1);
-  g.gain.linearRampToValueAtTime(0, ctx.currentTime + dur);
+function playRumble(){
+  var dur=12,c=getAudio(),buf=c.createBuffer(1,c.sampleRate*dur,c.sampleRate);
+  var d=buf.getChannelData(0);
+  for(var i=0;i<d.length;i++)d[i]=(Math.random()*2-1);
+  var src=c.createBufferSource(),flt=c.createBiquadFilter(),g=c.createGain();
+  flt.type='lowpass';flt.frequency.value=110;
+  src.buffer=buf;src.connect(flt);flt.connect(g);g.connect(c.destination);
+  g.gain.setValueAtTime(0,c.currentTime);
+  g.gain.linearRampToValueAtTime(0.35,c.currentTime+0.8);
+  g.gain.linearRampToValueAtTime(0.25,c.currentTime+dur-1);
+  g.gain.linearRampToValueAtTime(0,c.currentTime+dur);
   src.start();
 }
-function playCrash() {
-  const ctx = getAudio();
-  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.7, ctx.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.09));
-  const src = ctx.createBufferSource(), g = ctx.createGain(); g.gain.value = 0.7;
-  src.buffer = buf; src.connect(g); g.connect(ctx.destination); src.start();
+function playCrash(){
+  var c=getAudio(),buf=c.createBuffer(1,c.sampleRate*0.6,c.sampleRate);
+  var d=buf.getChannelData(0);
+  for(var i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.exp(-i/(c.sampleRate*0.08));
+  var src=c.createBufferSource(),g=c.createGain();g.gain.value=0.6;
+  src.buffer=buf;src.connect(g);g.connect(c.destination);src.start();
 }
-function playAlarm() {
-  [0, 0.5, 1, 1.5].forEach(t => {
-    setTimeout(() => beep(880, 0.25, 0.4), t * 1000);
-    setTimeout(() => beep(660, 0.25, 0.4), t * 1000 + 250);
+function playAlarm(){
+  [0,0.5,1,1.5].forEach(function(t){
+    setTimeout(function(){beep(880,0.25,0.4);},t*1000);
+    setTimeout(function(){beep(660,0.25,0.4);},t*1000+250);
+  });
+}
+function playFireAlarm(){
+  [0,0.4,0.8,1.2,1.6,2.0].forEach(function(t){
+    setTimeout(function(){beep(1100,0.18,0.38);},t*1000);
+    setTimeout(function(){beep(700,0.18,0.38);},t*1000+200);
   });
 }
 
-// ── HUD helpers ──────────────────────────────────────────────
-let score = 0, health = 100;
-const timers = [], intervals = [];
+// ─── HUD ─────────────────────────────────────────────────────────────────────
+var score=0,health=100,timers=[],intervals=[];
+function setPhase(n){document.getElementById('ph-name').textContent=n;}
+function setMsg(tag,txt){document.getElementById('msg-tag').textContent=tag;document.getElementById('msg-txt').textContent=txt;}
+function tickObj(id){var e=document.getElementById(id);if(e)e.classList.add('done');}
+function addScore(n){score=Math.max(0,score+n);document.getElementById('score-val').textContent=score;}
+function setHealth(delta){
+  health=Math.max(0,Math.min(100,health+delta));
+  var f=document.getElementById('hp-fill');
+  f.style.width=health+'%';
+  f.style.background=health>60?'linear-gradient(90deg,#00e5cc,#00b89c)':health>30?'linear-gradient(90deg,#f39c12,#e67e22)':'linear-gradient(90deg,#e74c3c,#c0392b)';
+  if(health<=0)endGame(false);
+}
+function flashRed(){var f=document.getElementById('flash');f.style.opacity=0.5;setTimeout(function(){f.style.opacity=0;},250);}
+function setTip(t){var e=document.getElementById('tooltip');e.textContent=t;e.style.display=t?'block':'none';}
 
-function setPhase(name) {
-  document.getElementById('ph-name').textContent = name;
+// ─── MESH HELPERS ────────────────────────────────────────────────────────────
+function mkMat(col,rough,metal,em,emI){
+  rough=rough!==undefined?rough:0.8;metal=metal!==undefined?metal:0;
+  var p={color:col,roughness:rough,metalness:metal};
+  if(em!==undefined){p.emissive=new THREE.Color(em);p.emissiveIntensity=emI||0.3;}
+  return new THREE.MeshStandardMaterial(p);
 }
-function setMsg(tag, txt) {
-  document.getElementById('msg-tag').textContent = tag;
-  document.getElementById('msg-txt').textContent = txt;
+function mkMatT(col,rough,op){
+  return new THREE.MeshStandardMaterial({color:col,roughness:rough,transparent:true,opacity:op});
 }
-function tickCheck(id) {
-  const el = document.getElementById(id);
-  if (el) el.classList.add('done');
+function addBox(w,h,d,m,px,py,pz,rx,ry,rz){
+  rx=rx||0;ry=ry||0;rz=rz||0;
+  var mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);
+  mesh.position.set(px,py,pz);mesh.rotation.set(rx,ry,rz);
+  mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);return mesh;
 }
-function addScore(n) {
-  score = Math.max(0, score + n);
-  document.getElementById('score-val').textContent = score;
+function addCyl(rt,rb,h,seg,m,px,py,pz){
+  var mesh=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),m);
+  mesh.position.set(px,py,pz);mesh.castShadow=true;scene.add(mesh);return mesh;
 }
-function setHealth(delta) {
-  health = Math.max(0, Math.min(100, health + delta));
-  const f = document.getElementById('hp-fill');
-  f.style.width = health + '%';
-  f.style.background = health > 60
-    ? 'linear-gradient(90deg,#4ecdc4,#45b7aa)'
-    : health > 30
-    ? 'linear-gradient(90deg,#f39c12,#e67e22)'
-    : 'linear-gradient(90deg,#e74c3c,#c0392b)';
-  if (health <= 0) endGame(false, 'injury');
+function addPlane(w,h,m,px,py,pz,rx,ry){
+  rx=rx||0;ry=ry||0;
+  var mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),m);
+  mesh.position.set(px,py,pz);mesh.rotation.set(rx,ry,0);
+  mesh.receiveShadow=true;scene.add(mesh);return mesh;
 }
-function flashRed() {
-  const f = document.getElementById('flash');
-  f.style.opacity = 0.4;
-  setTimeout(() => f.style.opacity = 0, 200);
-}
-function setTooltip(txt) {
-  const t = document.getElementById('tooltip');
-  t.textContent = txt; t.style.display = txt ? 'block' : 'none';
-}
-
-// ── LIGHTS ────────────────────────────────────────────────────
-let ambLight, roomPt, redLight;
-
-function buildLights() {
-  [ambLight, roomPt, redLight].forEach(l => { if (l) scene.remove(l); });
-  ambLight  = new THREE.AmbientLight(0x443322, 0.55); scene.add(ambLight);
-  roomPt    = new THREE.PointLight(0xfff8e1, 1.2, 18); roomPt.position.set(0, 2.8, 0); scene.add(roomPt);
-  redLight  = new THREE.PointLight(0xff2200, 0, 10);   redLight.position.set(0, 2.5, 0); scene.add(redLight);
+function makeInt(obj,type,label){
+  obj.userData.type=type;obj.userData.label=label;
+  obj.traverse(function(c){c.userData.type=type;c.userData.label=label;});
+  interactive.push(obj);return obj;
 }
 
-// ── MATERIAL / MESH helpers ───────────────────────────────────
-function mat(col, rough = 0.8, metal = 0) {
-  return new THREE.MeshStandardMaterial({ color: col, roughness: rough, metalness: metal });
-}
-function addBox(w, h, d, m, px, py, pz, rx = 0, ry = 0, rz = 0) {
-  const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
-  mesh.position.set(px, py, pz); mesh.rotation.set(rx, ry, rz);
-  mesh.castShadow = true; mesh.receiveShadow = true;
-  scene.add(mesh); return mesh;
-}
-function addCyl(rt, rb, h, seg, m, px, py, pz) {
-  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, seg), m);
-  mesh.position.set(px, py, pz); mesh.castShadow = true; scene.add(mesh); return mesh;
-}
-function addPlane(w, h, m, px, py, pz, rx = 0, ry = 0) {
-  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(w, h), m);
-  mesh.position.set(px, py, pz); mesh.rotation.set(rx, ry, 0);
-  mesh.receiveShadow = true; scene.add(mesh); return mesh;
+// ─── GLOBAL STATE ────────────────────────────────────────────────────────────
+var ambLight,roomPt,redPt;
+var coverSpot=null,medkitObj=null,exitObj=null,helmetObj=null;
+var fallingObjs=[],bigFalls=[],debrisMeshes=[],fireParts=[];
+var shaking=false,burning=false;
+var phase='idle',helmetWorn=false,covered=false,healed=false;
+var currentEnv='bedroom';
+
+function clearAll(){
+  // Clear scene except playerRig
+  var toRemove = [];
+  scene.children.forEach(function(c){ if(c !== playerRig) toRemove.push(c); });
+  toRemove.forEach(function(c){ scene.remove(c); });
+  interactive.length=0;fallingObjs.length=0;bigFalls.length=0;debrisMeshes.length=0;fireParts.length=0;
+  coverSpot=null;medkitObj=null;exitObj=null;helmetObj=null;
+  timers.forEach(clearTimeout);intervals.forEach(clearInterval);
+  timers.length=0;intervals.length=0;
+  score=0;health=100;helmetWorn=false;covered=false;healed=false;
+  shaking=false;burning=false;phase='idle';coveringUnderTable=false;coverY=normalY;
+  document.getElementById('score-val').textContent='0';
+  var f=document.getElementById('hp-fill');f.style.width='100%';f.style.background='linear-gradient(90deg,#00e5cc,#00b89c)';
+  document.getElementById('helmet-hud').textContent='HELMET: OFF';
+  document.getElementById('helmet-hud').classList.remove('on');
+  ['ck-cover','ck-helmet','ck-heal','ck-exit'].forEach(function(id){var e=document.getElementById(id);if(e)e.classList.remove('done');});
+  document.getElementById('shake').className='';
+  document.getElementById('smoke-ov').classList.remove('on');
+  scene.background=new THREE.Color(0x0a0806);
+  scene.fog=new THREE.Fog(0x0a0806,8,22);
+  // Reset player rig
+  playerRig.position.set(0,0,0);
+  playerRig.rotation.set(0,0,0);
+  vrInteractCooldown=0;
+  triggerPressed=[false,false];
+  triggerWasPressed=[false,false];
 }
 
-// ── GAME STATE ────────────────────────────────────────────────
-let phase = 'idle';
-let helmetWorn = false, covered = false, healed = false;
-let shaking = false;
-let medkitMesh = null, exitGroup = null;
-const fallingObjects = [];   // {mesh, targetY, speed, done}
-const bigFalls = [];          // {mesh, targetRot, speed, done}
-const debris = [];
-let coverSpotMesh = null;
+function buildLights(){
+  ambLight=new THREE.AmbientLight(0x443322,0.5);scene.add(ambLight);
+  roomPt=new THREE.PointLight(0xfff8e1,1.3,20);roomPt.position.set(0,2.8,0);roomPt.castShadow=true;scene.add(roomPt);
+  redPt=new THREE.PointLight(0xff2200,0,10);redPt.position.set(0,2.5,0);scene.add(redPt);
+}
+function buildWalls(rw,rd,rh,fc,wc){
+  addPlane(rw,rd,mkMat(fc,0.95),0,0,0,-Math.PI/2);
+  addPlane(rw,rd,mkMat(0xf0ece8,0.7),0,rh,0,Math.PI/2);
+  var wm=mkMat(wc,0.85);
+  addPlane(rw,rh,wm.clone(),0,rh/2,-rd/2,0,0);
+  addPlane(rw,rh,wm.clone(),0,rh/2,rd/2,0,Math.PI);
+  addPlane(rd,rh,wm.clone(),-rw/2,rh/2,0,0,Math.PI/2);
+  addPlane(rd,rh,wm.clone(),rw/2,rh/2,0,0,-Math.PI/2);
+  bounds.minX=-rw/2+0.35;bounds.maxX=rw/2-0.35;
+  bounds.minZ=-rd/2+0.35;bounds.maxZ=rd/2-0.35;
+}
 
-function clearAll() {
-  const remove = [];
-  scene.traverse(o => { if (o !== scene) remove.push(o); });
-  remove.forEach(o => { if (o.parent) o.parent.remove(o); if (o.geometry) o.geometry.dispose(); });
-  interactive.length = 0; fallingObjects.length = 0; bigFalls.length = 0; debris.length = 0;
-  medkitMesh = null; exitGroup = null; coverSpotMesh = null;
-  timers.forEach(clearTimeout); intervals.forEach(clearInterval);
-  timers.length = 0; intervals.length = 0;
-  score = 0; health = 100; helmetWorn = false; covered = false; healed = false; shaking = false;
-  phase = 'idle';
-  document.getElementById('score-val').textContent = '0';
-  document.getElementById('hp-fill').style.width = '100%';
-  document.getElementById('hp-fill').style.background = 'linear-gradient(90deg,#4ecdc4,#45b7aa)';
-  document.getElementById('helmet-tag').textContent = '⛑ HELMET: NOT WORN';
-  document.getElementById('helmet-tag').classList.remove('on');
-  ['ck-cover','ck-helmet','ck-heal','ck-exit'].forEach(id => {
-    const el = document.getElementById(id); if (el) el.classList.remove('done');
+function buildDesk(px,pz,wide){
+  wide=wide||1.6;
+  addBox(wide,0.07,0.9,mkMat(0x8b6914,0.55),px,0.76,pz);
+  var lm=mkMat(0x7a5d10,0.7);
+  [[-1,pz-0.42],[1,pz-0.42],[-1,pz+0.42],[1,pz+0.42]].forEach(function(lp){
+    addBox(0.07,0.75,0.07,lm,px+(lp[0])*(wide/2-0.09),0.375,lp[1]);
   });
-  document.getElementById('shake').classList.remove('on');
+  addBox(wide,0.5,0.04,mkMat(0x7a5d10,0.72),px,0.5,pz-0.44);
+  var sm=new THREE.MeshStandardMaterial({color:0x00e5cc,transparent:true,opacity:0.4,emissive:new THREE.Color(0x00e5cc),emissiveIntensity:0.25});
+  var spot=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.55,0.03,32),sm);
+  spot.position.set(px,0.04,pz);scene.add(spot);
+  coverSpot=spot;
+  makeInt(spot,'cover','[ TAKE COVER ] Click / Trigger!');
 }
 
-function makeInteractive(mesh, type, label) {
-  mesh.userData.type  = type;
-  mesh.userData.label = label;
-  mesh.traverse(c => { c.userData.type = type; c.userData.label = label; });
-  interactive.push(mesh);
-  return mesh;
+function buildMedkit(px,py,pz){
+  var g=new THREE.Group();
+  g.position.set(px,py,pz);g.visible=false;scene.add(g);
+  var body=new THREE.Mesh(new THREE.BoxGeometry(0.32,0.22,0.20),mkMat(0xcc1111,0.35,0.1,0x880000,0.4));
+  body.castShadow=true;g.add(body);
+  var crossH=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.052,0.022),mkMat(0xffffff,0.7));
+  crossH.position.set(0,0,0.101);g.add(crossH);
+  var crossV=new THREE.Mesh(new THREE.BoxGeometry(0.052,0.14,0.022),mkMat(0xffffff,0.7));
+  crossV.position.set(0,0,0.101);g.add(crossV);
+  var handleGeo=new THREE.TorusGeometry(0.048,0.011,8,20,Math.PI);
+  var handle=new THREE.Mesh(handleGeo,mkMat(0xaaaaaa,0.3,0.8));
+  handle.rotation.x=Math.PI;handle.position.set(0,0.13,0);g.add(handle);
+  var gl=new THREE.PointLight(0xff2200,0.7,1.5);g.add(gl);
+  medkitObj=g;
+  makeInt(g,'medkit','[ FIRST AID KIT ] Click / Trigger!');
 }
 
-// ── DESK (shared safe-zone builder) ──────────────────────────
-function buildDesk(px, pz, wide = 1.6) {
-  const g = new THREE.Group(); g.position.set(px, 0, pz); scene.add(g);
-  const top = new THREE.Mesh(new THREE.BoxGeometry(wide, 0.06, 0.88), mat(0x8b6914, 0.6));
-  top.position.y = 0.75; top.castShadow = true; g.add(top);
-  const legM = mat(0x7a5d10, 0.7);
-  const legPositions = [
-    [-wide / 2 + 0.08, 0.375, -0.40], [wide / 2 - 0.08, 0.375, -0.40],
-    [-wide / 2 + 0.08, 0.375,  0.40], [wide / 2 - 0.08, 0.375,  0.40],
-  ];
-  legPositions.forEach(([lx, ly, lz]) => {
-    const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.75, 0.07), legM);
-    leg.position.set(lx, ly, lz); leg.castShadow = true; g.add(leg);
+function buildHelmet(px,py,pz){
+  var g=new THREE.Group();
+  g.position.set(px,py,pz);scene.add(g);
+  var dome=new THREE.Mesh(
+    new THREE.SphereGeometry(0.21,20,16,0,Math.PI*2,0,Math.PI*0.55),
+    mkMat(0xff5500,0.3,0.25,0xff3300,0.22)
+  );
+  dome.castShadow=true;g.add(dome);
+  var brim=new THREE.Mesh(new THREE.CylinderGeometry(0.265,0.265,0.035,28,1,true),mkMat(0xff4400,0.4,0.2));
+  brim.position.y=-0.032;g.add(brim);
+  var brimRing=new THREE.Mesh(new THREE.RingGeometry(0.21,0.265,28),mkMat(0xff4400,0.4,0.2));
+  brimRing.rotation.x=-Math.PI/2;brimRing.position.y=-0.015;g.add(brimRing);
+  var stripe=new THREE.Mesh(new THREE.TorusGeometry(0.197,0.011,6,28),mkMat(0xffd700,0.2,0.85));
+  stripe.rotation.x=Math.PI/2;stripe.position.y=-0.002;g.add(stripe);
+  var gl=new THREE.PointLight(0xff6600,0.55,1.6);g.add(gl);
+  helmetObj=g;
+  makeInt(g,'helmet','[ SAFETY HELMET ] Click / Trigger!');
+}
+
+function buildExit(px,pz,ry){
+  ry=ry||0;
+  var g=new THREE.Group();
+  g.position.set(px,0,pz);g.rotation.y=ry;g.visible=false;scene.add(g);
+  var frame=new THREE.Mesh(new THREE.BoxGeometry(1.1,2.45,0.09),mkMat(0x228844,0.45));
+  frame.position.y=1.22;frame.castShadow=true;g.add(frame);
+  var panel=new THREE.Mesh(new THREE.BoxGeometry(0.96,2.22,0.065),mkMat(0x1a6633,0.4,0.2));
+  panel.position.y=1.11;panel.castShadow=true;g.add(panel);
+  var sign=new THREE.Mesh(new THREE.BoxGeometry(0.65,0.22,0.04),mkMat(0x00cc44,0.3,0.1,0x00aa33,0.85));
+  sign.position.y=2.58;g.add(sign);
+  var el=new THREE.PointLight(0x00ff66,1.1,5);el.position.set(0,2.4,0.3);g.add(el);
+  exitObj=g;
+  makeInt(panel,'exit','[ EXIT Building ] Click / Trigger!');
+}
+
+function addWindow(px,py,pz,wide,tall){
+  var wm=mkMatT(0x87ceeb,0.1,0.38);
+  var w=new THREE.Mesh(new THREE.BoxGeometry(0.07,tall,wide),wm);
+  w.position.set(px,py,pz);scene.add(w);
+  var fm=new THREE.Mesh(new THREE.BoxGeometry(0.05,tall+0.15,wide+0.15),mkMat(0xffffff,0.5));
+  fm.position.set(px+0.02,py,pz);scene.add(fm);
+  makeInt(w,'window','[ WINDOW HAZARD ] Stay Back!');
+  return w;
+}
+
+function spawnDebris(spread,col,count){
+  col=col||0x4a3020;count=count||12;
+  for(var i=0;i<count;i++){
+    var m=new THREE.Mesh(new THREE.BoxGeometry(0.08+Math.random()*0.2,0.03,0.07+Math.random()*0.16),mkMat(col,1.0));
+    m.position.set((Math.random()-0.5)*spread*2,0.005,(Math.random()-0.5)*spread*2);
+    m.rotation.y=Math.random()*Math.PI;m.visible=false;scene.add(m);debrisMeshes.push(m);
+  }
+}
+function dropAll(){
+  fallingObjs.forEach(function(fo){
+    if(fo.done)return;
+    var sy=fo.mesh.position.y,dur=450+Math.random()*300,t0=performance.now();
+    var rx=(Math.random()-0.5)*2.5,rz=(Math.random()-0.5)*2.5;
+    var srx=fo.mesh.rotation.x,srz=fo.mesh.rotation.z;
+    (function go(){
+      if(fo.done)return;
+      var p=Math.min((performance.now()-t0)/dur,1),e=1-Math.pow(1-p,3);
+      fo.mesh.position.y=sy+(fo.ty-sy)*e;
+      fo.mesh.rotation.x=srx+rx*e;fo.mesh.rotation.z=srz+rz*e;
+      if(p<1)requestAnimationFrame(go);else fo.done=true;
+    })();
   });
-  // glowing cover spot
-  const spotMat = new THREE.MeshStandardMaterial({ color: 0x4ecdc4, transparent: true, opacity: 0.35 });
-  const spot = new THREE.Mesh(new THREE.CylinderGeometry(0.52, 0.52, 0.04, 32), spotMat);
-  spot.position.set(px, 0.05, pz);
-  spot.castShadow = false; scene.add(spot);
-  coverSpotMesh = spot;
-  makeInteractive(spot, 'cover', '▶ TAKE COVER — Click!');
+  bigFalls.forEach(function(bf){
+    if(bf.done)return;
+    var sr=bf.mesh.rotation[bf.axis],dur=750+Math.random()*300,t0=performance.now();
+    (function go(){
+      if(bf.done)return;
+      var p=Math.min((performance.now()-t0)/dur,1),e=1-Math.pow(1-p,3);
+      bf.mesh.rotation[bf.axis]=sr+bf.tr*e;
+      if(p<1)requestAnimationFrame(go);else bf.done=true;
+    })();
+  });
+  debrisMeshes.forEach(function(d){d.visible=true;});
 }
 
-// ── EXIT DOOR ────────────────────────────────────────────────
-function buildExit(px, pz) {
-  const g = new THREE.Group(); g.position.set(px, 0, pz); g.visible = false; scene.add(g);
-  const doorMat = mat(0x2ecc71, 0.4);
-  const door = new THREE.Mesh(new THREE.BoxGeometry(0.95, 2.2, 0.1), doorMat);
-  door.position.y = 1.1; door.castShadow = true; g.add(door);
-  const exitLight = new THREE.PointLight(0x2ecc71, 0.8, 4);
-  exitLight.position.set(0, 2.2, 0); g.add(exitLight);
-  makeInteractive(door, 'exit', '🚪 EXIT Building — Click!');
-  exitGroup = g;
+function createFireParticles(px,py,pz,count){
+  count=count||40;
+  var geo=new THREE.BufferGeometry();
+  var pos=new Float32Array(count*3),col=new Float32Array(count*3);
+  for(var i=0;i<count;i++){
+    pos[i*3]=px+(Math.random()-0.5)*0.55;
+    pos[i*3+1]=py+Math.random()*1.6;
+    pos[i*3+2]=pz+(Math.random()-0.5)*0.55;
+    var t=Math.random();col[i*3]=1;col[i*3+1]=t*0.55;col[i*3+2]=0;
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  var ptm=new THREE.PointsMaterial({size:0.18,vertexColors:true,transparent:true,opacity:0.9});
+  var pts=new THREE.Points(geo,ptm);
+  pts.userData.px=px;pts.userData.py=py;pts.userData.pz=pz;pts.userData.count=count;
+  scene.add(pts);fireParts.push(pts);
+  var fl=new THREE.PointLight(0xff4400,2.2,5.5);fl.position.set(px,py+0.8,pz);scene.add(fl);
+}
+function updateFire(){
+  fireParts.forEach(function(fp){
+    var pos=fp.geometry.attributes.position.array,col=fp.geometry.attributes.color.array;
+    var px=fp.userData.px,py=fp.userData.py,pz=fp.userData.pz,cnt=fp.userData.count;
+    for(var i=0;i<cnt;i++){
+      pos[i*3+1]+=0.018+Math.random()*0.022;
+      pos[i*3]+=(Math.random()-0.5)*0.014;
+      pos[i*3+2]+=(Math.random()-0.5)*0.014;
+      if(pos[i*3+1]>py+2.4){pos[i*3]=px+(Math.random()-0.5)*0.55;pos[i*3+1]=py;pos[i*3+2]=pz+(Math.random()-0.5)*0.55;}
+      var h=(pos[i*3+1]-py)/2.4;col[i*3]=1;col[i*3+1]=Math.max(0,(1-h)*0.65);col[i*3+2]=0;
+    }
+    fp.geometry.attributes.position.needsUpdate=true;fp.geometry.attributes.color.needsUpdate=true;
+  });
 }
 
-// ── DEBRIS ───────────────────────────────────────────────────
-function spawnDebris(spread, col = 0x4a3020, count = 12) {
-  for (let i = 0; i < count; i++) {
-    const m = new THREE.Mesh(
-      new THREE.BoxGeometry(0.1 + Math.random() * 0.22, 0.03, 0.09 + Math.random() * 0.18),
-      mat(col, 1)
-    );
-    m.position.set((Math.random() - 0.5) * spread * 2, 0.003, (Math.random() - 0.5) * spread * 2);
-    m.rotation.y = Math.random() * Math.PI;
-    m.visible = false; scene.add(m); debris.push(m);
+// ─── ENVIRONMENTS ────────────────────────────────────────────────────────────
+function buildBedroom(){
+  buildWalls(9,9,3.2,0x5c3d2e,0xd4c5b0);
+  addBox(2.0,0.45,3.2,mkMat(0x5a3d6b,0.9),-2.3,0.22,-2.5);
+  addBox(1.9,0.2,3.0,mkMat(0xf2e4e4,0.85),-2.3,0.56,-2.5);
+  addBox(2.0,0.9,0.14,mkMat(0x4a2f58,0.9),-2.3,0.78,-4.05);
+  addBox(0.55,0.12,0.4,mkMat(0xffeeff,0.8),-2.7,0.70,-3.7);
+  addBox(0.55,0.12,0.4,mkMat(0xeeddff,0.8),-1.85,0.70,-3.7);
+  addBox(0.5,0.55,0.45,mkMat(0x8b6914,0.75),-3.35,0.27,-3.3);
+  addBox(0.44,0.08,0.4,mkMat(0x7a5800,0.7),-3.35,0.55,-3.3);
+  addCyl(0.025,0.025,0.4,8,mkMat(0xd4a820,0.5),-3.35,0.75,-3.3);
+  var shade=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.22,12,1,true),mkMat(0xffe8a0,0.5));
+  shade.position.set(-3.35,1.0,-3.3);scene.add(shade);
+  fallingObjs.push({mesh:shade,ty:0.14,done:false});
+  buildDesk(2.5,-1.8,1.7);
+  var mon=addBox(0.85,0.55,0.06,mkMat(0x111111,0.2,0.6),2.5,0.99,-1.32);
+  fallingObjs.push({mesh:mon,ty:0.08,done:false});
+  var bs=addBox(1.2,2.2,0.32,mkMat(0x7b5e3a,0.8),-3.4,1.1,2.5);
+  bigFalls.push({mesh:bs,tr:1.0,done:false,axis:'x'});
+  [0xc0392b,0x2980b9,0x27ae60,0x8e44ad,0xf39c12,0x16a085].forEach(function(c,i){
+    var bk=addBox(0.1,0.28,0.24,mkMat(c,0.9),-3.56+i*0.2,1.88,2.44);
+    fallingObjs.push({mesh:bk,ty:0.07,done:false});
+  });
+  var wd=addBox(0.95,2.5,1.2,mkMat(0x6b4228,0.9),3.1,1.25,2.4);
+  bigFalls.push({mesh:wd,tr:-0.85,done:false,axis:'z'});
+  addBox(0.03,0.14,0.03,mkMat(0xb8860b,0.3,0.8),2.66,1.4,1.81);
+  addBox(0.03,0.14,0.03,mkMat(0xb8860b,0.3,0.8),3.54,1.4,1.81);
+  addWindow(-4.41,1.85,0,2.0,1.6);
+  addPlane(3.8,2.8,mkMat(0x8b2635,1.0),0,0.005,0.4,-Math.PI/2);
+  buildHelmet(2.65,0.82,-0.75);
+  buildMedkit(0,0.04,1.8);
+  buildExit(0,4.38,Math.PI);
+  spawnDebris(3.8,0x4a3020,12);
+  camera.position.set(0,1.6,2.5);
+  playerRig.position.set(0,0,0);
+  yaw=Math.PI;pitch=0;euler.set(pitch,yaw,0,'YXZ');camera.quaternion.setFromEuler(euler);
+}
+
+function buildLiving(){
+  buildWalls(10,10,3.4,0x6b4e31,0xc8b89a);
+  roomPt.position.set(0,3.2,0);
+  addBox(3.0,0.65,1.0,mkMat(0x5a3060,0.95),-2.5,0.32,-2.0);
+  addBox(3.0,0.75,0.22,mkMat(0x4a2050,0.95),-2.5,0.72,-2.52);
+  addBox(0.25,0.75,1.05,mkMat(0x4a2050,0.95),-4.0,0.72,-2.0);
+  addBox(0.25,0.75,1.05,mkMat(0x4a2050,0.95),-1.0,0.72,-2.0);
+  addBox(0.8,0.14,0.7,mkMat(0x8060a0,0.85),-3.1,0.68,-2.0);
+  addBox(0.8,0.14,0.7,mkMat(0x7050a0,0.85),-2.1,0.68,-2.0);
+  addBox(2.0,0.5,0.5,mkMat(0x333333,0.3,0.5),0,0.25,-4.6);
+  var tv=addBox(1.9,1.1,0.07,mkMat(0x111111,0.1,0.8),0,1.2,-4.62);
+  fallingObjs.push({mesh:tv,ty:0.1,done:false});
+  buildDesk(0.5,0.5,1.4);
+  var bc=addBox(0.45,2.5,1.8,mkMat(0x7b5e3a,0.8),4.1,1.25,-1.2);
+  bigFalls.push({mesh:bc,tr:-1.0,done:false,axis:'z'});
+  [0xc0392b,0x27ae60,0x2980b9,0x8e44ad].forEach(function(c,i){
+    var bk=addBox(0.1,0.26,0.22,mkMat(c,0.9),3.88,2.02,-0.5+i*0.38);
+    fallingObjs.push({mesh:bk,ty:0.07,done:false});
+  });
+  addWindow(4.92,1.9,1.2,2.2,1.7);
+  var pot=addBox(0.42,0.48,0.42,mkMat(0xc0855a,0.9),-4.2,0.24,2.5);
+  var plant=new THREE.Mesh(new THREE.SphereGeometry(0.3,14,14),mkMat(0x2d7a2d,0.95));
+  plant.position.set(-4.2,0.66,2.5);scene.add(plant);
+  fallingObjs.push({mesh:pot,ty:0.05,done:false});
+  fallingObjs.push({mesh:plant,ty:0.05,done:false});
+  var cl=new THREE.Mesh(new THREE.SphereGeometry(0.18,16,16),mkMat(0xffe4a0,0.3,0.2));
+  cl.position.set(0,3.3,0);scene.add(cl);
+  fallingObjs.push({mesh:cl,ty:0.16,done:false});
+  addPlane(5.0,4.0,mkMat(0x8b3a2e,1.0),0,0.005,-0.2,-Math.PI/2);
+  addBox(0.5,0.52,0.45,mkMat(0x7b5e3a,0.7),3.0,0.26,2.0);
+  var vase=addCyl(0.09,0.06,0.28,16,mkMat(0x4466cc,0.4,0.4),3.0,0.68,2.0);
+  fallingObjs.push({mesh:vase,ty:0.06,done:false});
+  buildHelmet(1.5,0.5,0.8);
+  buildMedkit(2.8,0.04,2.8);
+  buildExit(0,4.88,Math.PI);
+  spawnDebris(4.5,0x5a4030,14);
+  camera.position.set(0,1.6,3.0);
+  playerRig.position.set(0,0,0);
+  yaw=Math.PI;pitch=0;euler.set(pitch,yaw,0,'YXZ');camera.quaternion.setFromEuler(euler);
+}
+
+function buildOffice(){
+  buildWalls(11,10,3.0,0x9c9c9c,0xd8d0c8);
+  roomPt.intensity=1.5;
+  buildDesk(0,-1.0,2.1);
+  var mon=addBox(1.0,0.62,0.07,mkMat(0x1a1a2e,0.2,0.6),0,1.0,-1.22);
+  fallingObjs.push({mesh:mon,ty:0.09,done:false});
+  addBox(0.8,0.05,0.4,mkMat(0x222222,0.3,0.5),0,0.8,-1.1);
+  addBox(0.55,0.025,0.22,mkMat(0xcccccc,0.6),0,0.83,-0.65);
+  addCyl(0.42,0.42,0.1,20,mkMat(0x1a1a1a,0.9),0,0.46,0.9);
+  addCyl(0.04,0.04,0.55,8,mkMat(0x333333,0.5),0,0.23,0.9);
+  addBox(0.8,0.6,0.1,mkMat(0x1a1a1a,0.9),0,0.85,1.23);
+  var fc=addBox(0.7,1.7,0.9,mkMat(0xaaaaaa,0.3,0.5),3.4,0.85,-2.1);
+  bigFalls.push({mesh:fc,tr:-0.9,done:false,axis:'z'});
+  addBox(0.04,0.12,0.04,mkMat(0x888888,0.3,0.8),3.08,0.75,-1.67);
+  addBox(0.04,0.12,0.04,mkMat(0x888888,0.3,0.8),3.08,1.2,-1.67);
+  addBox(0.07,0.06,1.8,mkMat(0xa07850,0.6),-4.8,1.6,0.8);
+  [0xc74c3c,0x3498db,0xf1c40f].forEach(function(c,i){
+    var cup=addCyl(0.08,0.07,0.21,12,mkMat(c,0.5),-4.72,1.72,i*0.55);
+    fallingObjs.push({mesh:cup,ty:0.11,done:false});
+  });
+  addWindow(5.43,1.85,-2.2,2.0,1.5);
+  addWindow(5.43,1.85,2.2,2.0,1.5);
+  [-2.5,0,2.5].forEach(function(x){
+    var fl=addBox(0.14,0.06,1.8,new THREE.MeshStandardMaterial({color:0xfffde7,emissive:new THREE.Color(0xfffde7),emissiveIntensity:0.7}),x,2.88,0);
+    fl.name='fluor';
+  });
+  addBox(2.5,1.4,0.05,mkMat(0xfafafa,0.9),-5.4,1.7,0);
+  buildHelmet(1.0,0.84,-0.8);
+  buildMedkit(-2.5,0.04,2.5);
+  buildExit(0,4.88,Math.PI);
+  spawnDebris(4.5,0xaaaaaa,16);
+  camera.position.set(0,1.6,3.0);
+  playerRig.position.set(0,0,0);
+  yaw=Math.PI;pitch=0;euler.set(pitch,yaw,0,'YXZ');camera.quaternion.setFromEuler(euler);
+}
+
+function buildFireWarehouse(){
+  scene.background=new THREE.Color(0x0d0500);
+  scene.fog=new THREE.Fog(0x150800,5,18);
+  buildWalls(12,12,5,0x555555,0x606060);
+  for(var bz=-4;bz<=4;bz+=4)addBox(12,0.25,0.35,mkMat(0x333333,0.6),0,4.85,bz);
+  for(var bx=-4;bx<=4;bx+=4)addBox(0.3,0.25,12,mkMat(0x333333,0.6),bx,4.85,0);
+  function makeShelf(spx,spz){
+    [0.5,1.5,2.5].forEach(function(sy){
+      addBox(2.5,0.07,0.8,mkMat(0x888888,0.4,0.6),spx,sy,spz);
+    });
+    [[-1.22,1.52,-0.38],[1.22,1.52,-0.38],[-1.22,1.52,0.38],[1.22,1.52,0.38]].forEach(function(lp){
+      var up=new THREE.Mesh(new THREE.BoxGeometry(0.05,3.05,0.05),mkMat(0x777777,0.5,0.7));
+      up.position.set(spx+lp[0],lp[1],spz+lp[2]);scene.add(up);
+    });
+    [0x884422,0x668833,0x446688,0x884466].forEach(function(c,i){addBox(0.55,0.5,0.6,mkMat(c,0.9),spx-0.9+i*0.6,0.78,spz);});
+    [0x774433,0x557733].forEach(function(c,i){
+      var b=addBox(0.55,0.5,0.6,mkMat(c,0.9),spx-0.4+i*0.6,1.78,spz);
+      bigFalls.push({mesh:b,tr:0.9,done:false,axis:'x'});
+    });
+  }
+  makeShelf(-4,-3);makeShelf(4,-3);makeShelf(-4,3);makeShelf(4,3);
+  addBox(1.8,1.0,3.0,mkMat(0xffaa00,0.6),3.5,0.5,1.0);
+  addBox(1.8,1.8,0.2,mkMat(0x222222,0.4),3.5,0.9,-0.72);
+  addBox(0.1,1.5,0.08,mkMat(0xffaa00,0.5,0.6),3.1,1.25,-1.05);
+  addBox(0.1,1.5,0.08,mkMat(0xffaa00,0.5,0.6),3.9,1.25,-1.05);
+  [[-2.0,0.55,0.0],[-2.7,0.55,0.4],[-2.0,0.55,0.8]].forEach(function(bp){
+    addCyl(0.24,0.24,0.7,16,mkMat(0x225588,0.5,0.3),bp[0],bp[1],bp[2]);
+  });
+  var fireSources=[[-3.5,0.1,-4.5],[3.5,0.1,-4.5],[-5.5,0.1,0.0],[5.5,0.1,0.0],[0.0,0.1,4.5],[-4.0,0.1,3.0]];
+  fireSources.forEach(function(fs){
+    createFireParticles(fs[0],fs[1],fs[2],45);
+    addPlane(1.4,1.4,mkMat(0x1a0800,0.98),fs[0],0.003,fs[2],-Math.PI/2);
+  });
+  var eg=new THREE.Group();
+  eg.position.set(0,0,0);scene.add(eg);
+  var extBody=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.55,16),mkMat(0xdd1111,0.3,0.2,0x880000,0.3));
+  extBody.position.set(0,0.55,0);eg.add(extBody);
+  var extHead=new THREE.Mesh(new THREE.CylinderGeometry(0.04,0.04,0.2,8),mkMat(0x888888,0.3,0.7));
+  extHead.position.set(0,0.9,0);eg.add(extHead);
+  var extHandle=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.04,0.08),mkMat(0x888888,0.3,0.8));
+  extHandle.position.set(0,0.98,0);eg.add(extHandle);
+  var extGlow=new THREE.PointLight(0xff3300,0.8,2.5);eg.add(extGlow);
+  coverSpot=eg;
+  makeInt(eg,'cover','[ GRAB EXTINGUISHER ] Click / Trigger!');
+  ambLight.color.setHex(0x331100);
+  roomPt.color.setHex(0xff6622);roomPt.intensity=0.5;
+  buildHelmet(1.5,0.04,1.5);
+  buildMedkit(2.0,0.04,-2.0);
+  buildExit(-5.5,0,Math.PI/2);
+  camera.position.set(0,1.6,3.0);
+  playerRig.position.set(0,0,0);
+  yaw=Math.PI;pitch=0;euler.set(pitch,yaw,0,'YXZ');camera.quaternion.setFromEuler(euler);
+}
+
+// ─── INTERACT ────────────────────────────────────────────────────────────────
+function interact(obj){
+  var t=obj.userData.type;
+  if(t==='cover'){
+    if(covered){setMsg('Already sheltered','You are already in a safe position!');return;}
+    covered=true;addScore(50);tickObj('ck-cover');
+    beep(660,0.15,0.3);setTimeout(function(){beep(880,0.15,0.25);},150);
+    if(currentEnv==='fire'){
+      setMsg('GRAB EXTINGUISHER','Now find your protective mask and the EXIT!');
+    } else {
+      coveringUnderTable=true;coverY=underTableY;
+      setMsg('DROP AND COVER!','DROP, COVER, HOLD ON! Stay under the desk until shaking stops!');
+    }
+    if(coverSpot&&coverSpot.material){try{coverSpot.material.color.setHex(0x00ff88);}catch(e){}}
+  }
+  else if(t==='helmet'){
+    if(helmetWorn){setMsg('Already equipped','Helmet is already on!');return;}
+    helmetWorn=true;addScore(30);tickObj('ck-helmet');
+    if(helmetObj)helmetObj.visible=false;
+    var htag=document.getElementById('helmet-hud');
+    htag.textContent=currentEnv==='fire'?'MASK: ON':'HELMET: ON';
+    htag.classList.add('on');
+    setMsg(currentEnv==='fire'?'Mask On':'Helmet On',currentEnv==='fire'?'Respirator on. Now find the EXIT!':'Hard hat on. Stay under cover!');
+    beep(880,0.12,0.25);setTimeout(function(){beep(1100,0.12,0.2);},120);
+  }
+  else if(t==='medkit'){
+    if(healed){setMsg('Already used','Medkit already applied!');return;}
+    healed=true;addScore(40);tickObj('ck-heal');
+    setHealth(100-health);
+    if(medkitObj)medkitObj.visible=false;
+    setMsg('Healed!','Health restored! Find the glowing EXIT and evacuate!');
+    beep(550,0.2,0.3);setTimeout(function(){beep(660,0.2,0.25);},200);
+  }
+  else if(t==='exit'){
+    if(phase!=='recovery'){setMsg('Not yet!','Disaster still active -- wait for the all-clear!');return;}
+    addScore(100);tickObj('ck-exit');endGame(true);
+  }
+  else if(t==='window'){
+    if(shaking||burning){setHealth(-12);flashRed();setMsg('GLASS HAZARD!','Move AWAY from windows NOW!');}
+    else setMsg('Window','Stay away from windows during disasters. Glass shatters violently.');
   }
 }
 
-// ════════════════════════════════════════════════════════════════
-// ENVIRONMENT BUILDERS
-// ════════════════════════════════════════════════════════════════
-function buildWalls(rw, rd, rh, floorCol, wallCol) {
-  addPlane(rw, rd, mat(floorCol, 0.95), 0, 0, 0, -Math.PI / 2);
-  addPlane(rw, rd, mat(0xf0ece8, 0.7), 0, rh, 0, Math.PI / 2);
-  const wm = mat(wallCol, 0.8);
-  addPlane(rw, rh, wm.clone(), 0, rh / 2, -rd / 2, 0, 0);
-  addPlane(rw, rh, wm.clone(), 0, rh / 2,  rd / 2, 0, Math.PI);
-  addPlane(rd, rh, wm.clone(), -rw / 2, rh / 2, 0, 0,  Math.PI / 2);
-  addPlane(rd, rh, wm.clone(),  rw / 2, rh / 2, 0, 0, -Math.PI / 2);
-  bounds.minX = -rw / 2 + 0.4; bounds.maxX = rw / 2 - 0.4;
-  bounds.minZ = -rd / 2 + 0.4; bounds.maxZ = rd / 2 - 0.4;
-}
-
-function buildBedroom() {
-  buildWalls(8, 8, 3, 0x5c3d2e, 0xd4c5b0);
-  // bed
-  addBox(1.9, 0.5, 3,    mat(0x6b4e71, 0.9),  -2.2, 0.25, -2.5);
-  addBox(1.8, 0.18, 2.8, mat(0xf0e0e0, 0.9),  -2.2, 0.54, -2.5);
-  addBox(1.9, 0.85, 0.12, mat(0x5a3d5a, 0.9), -2.2, 0.75, -4.0);
-  // desk
-  buildDesk(2.2, -2.0, 1.6);
-  // bookshelf (falls)
-  const bs = addBox(1.2, 2, 0.3, mat(0x7b5e3a, 0.8), -3.0, 1.0, 2.6);
-  bigFalls.push({ mesh: bs, targetRot: 0.9, speed: 0, done: false, axis: 'x' });
-  // books
-  [0xc0392b, 0x2980b9, 0x27ae60, 0x8e44ad, 0xf39c12].forEach((c, i) => {
-    const bk = addBox(0.12, 0.28, 0.22, mat(c, 0.9), -3.25 + i * 0.18, 1.85, 2.48);
-    fallingObjects.push({ mesh: bk, targetY: 0.06, done: false });
-  });
-  // wardrobe
-  const wd = addBox(0.85, 2.4, 1.2, mat(0x6b4228, 0.9), 2.9, 1.2, 2.3);
-  bigFalls.push({ mesh: wd, targetRot: -0.8, speed: 0, done: false, axis: 'z' });
-  // window
-  const win = addBox(0.08, 1.4, 1.8, new THREE.MeshStandardMaterial({ color: 0x87ceeb, roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.38 }), -3.9, 1.7, 0);
-  addBox(0.04, 1.6, 2.0, mat(0xffffff, 0.5), -3.92, 1.7, 0);
-  makeInteractive(win, 'window', '⚠ WINDOW HAZARD — Step Back!');
-  // lamp
-  addCyl(0.04, 0.04, 1.5, 8, mat(0xc0a060, 0.6), 3.0, 0.75, -0.5);
-  const shade = addBox(0.45, 0.28, 0.45, mat(0xffe4a0, 0.6), 3.0, 1.6, -0.5);
-  fallingObjects.push({ mesh: shade, targetY: 0.14, done: false });
-  // rug
-  addPlane(3.5, 2.5, mat(0x8b2635, 1.0), 0, 0.005, 0.5, -Math.PI / 2);
-  // helmet
-  const hg = new THREE.Group(); hg.position.set(2.4, 0.79, -1.8); scene.add(hg);
-  addCyl(0.18, 0.2, 0.22, 16, mat(0xff6b35, 0.4, 0.3), 0, 0.11, 0);
-  hg.add(hg.children[hg.children.length - 1] || new THREE.Object3D());
-  const hcyl = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.22, 16), mat(0xff6b35, 0.4, 0.3));
-  hcyl.position.set(2.4, 0.9, -1.8); scene.add(hcyl);
-  makeInteractive(hcyl, 'helmet', '⛑ Pick Up Helmet — Click!');
-  // medkit
-  medkitMesh = addBox(0.25, 0.18, 0.18, mat(0xe74c3c, 0.4), 0, 0.1, 1.6);
-  medkitMesh.visible = false;
-  makeInteractive(medkitMesh, 'medkit', '🩺 Use Medkit — Click!');
-  // exit
-  buildExit(0, 3.7);
-  spawnDebris(3.5, 0x4a3020, 10);
-  camera.position.set(0, 1.6, 2.5);
-  yaw = Math.PI; pitch = 0; euler.set(pitch, yaw, 0, 'YXZ'); camera.quaternion.setFromEuler(euler);
-}
-
-function buildLiving() {
-  buildWalls(9, 9, 3.2, 0x6b4e31, 0xc8b89a);
-  roomPt.position.set(0, 3.1, 0);
-  // sofa
-  addBox(2.8, 0.7, 1.0, mat(0x6b4471, 0.95), -2.5, 0.35, -2.0);
-  addBox(2.8, 0.8, 0.22, mat(0x5a3560, 0.95), -2.5, 0.75, -2.5);
-  // coffee table (safe zone)
-  buildDesk(0.3, 0.2, 1.3);
-  // tv
-  addBox(2.0, 0.9, 0.45, mat(0x222, 0.3, 0.5), 0, 0.45, -4.2);
-  const tv = addBox(1.7, 1.05, 0.06, mat(0x111, 0.1, 0.8), 0, 1.38, -4.18);
-  fallingObjects.push({ mesh: tv, targetY: 0.1, done: false });
-  // bookcase
-  const bc = addBox(0.4, 2.4, 1.6, mat(0x7b5e3a, 0.8), 3.8, 1.2, -1.5);
-  bigFalls.push({ mesh: bc, targetRot: -1.0, speed: 0, done: false, axis: 'z' });
-  // window
-  const wl = addBox(0.08, 1.5, 2.0, new THREE.MeshStandardMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.38 }), 4.42, 1.8, 1.0);
-  addBox(0.04, 1.7, 2.2, mat(0xffffff, 0.5), 4.44, 1.8, 1.0);
-  makeInteractive(wl, 'window', '⚠ WINDOW HAZARD — Step Back!');
-  // plant
-  const pt = addBox(0.4, 0.45, 0.4, mat(0xc0855a, 0.9), -4.0, 0.22, 2.5);
-  const pl = new THREE.Mesh(new THREE.SphereGeometry(0.28, 12, 12), mat(0x2d7a2d, 1.0));
-  pl.position.set(-4.0, 0.62, 2.5); scene.add(pl);
-  fallingObjects.push({ mesh: pt, targetY: 0.05, done: false });
-  fallingObjects.push({ mesh: pl, targetY: 0.05, done: false });
-  // ceiling light
-  const cl = new THREE.Mesh(new THREE.SphereGeometry(0.15, 12, 12), mat(0xffe4a0, 0.3, 0.2));
-  cl.position.set(0, 3.1, 0); scene.add(cl);
-  fallingObjects.push({ mesh: cl, targetY: 0.16, done: false });
-  // rug
-  addPlane(4.5, 3.5, mat(0x8b3a2e, 1.0), 0, 0.005, 0, -Math.PI / 2);
-  // helmet
-  const hcyl = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.22, 16), mat(0xff6b35, 0.4, 0.3));
-  hcyl.position.set(1.0, 0.48, 0.5); scene.add(hcyl);
-  makeInteractive(hcyl, 'helmet', '⛑ Pick Up Helmet — Click!');
-  // medkit
-  medkitMesh = addBox(0.25, 0.18, 0.18, mat(0xe74c3c, 0.4), 2.5, 0.1, 2.5);
-  medkitMesh.visible = false; makeInteractive(medkitMesh, 'medkit', '🩺 Use Medkit — Click!');
-  // exit
-  buildExit(0, 4.3);
-  spawnDebris(4.0, 0x5a4030, 12);
-  camera.position.set(0, 1.6, 3.0);
-  yaw = Math.PI; pitch = 0; euler.set(pitch, yaw, 0, 'YXZ'); camera.quaternion.setFromEuler(euler);
-}
-
-function buildOffice() {
-  buildWalls(10, 9, 3.0, 0x9c9c9c, 0xd8d0c8);
-  roomPt.intensity = 1.4;
-  // desk
-  buildDesk(0, -1.0, 1.9);
-  // monitor
-  const mon = addBox(0.9, 0.55, 0.06, mat(0x1a1a2e, 0.2, 0.6), 0, 0.95, -1.28);
-  fallingObjects.push({ mesh: mon, targetY: 0.08, done: false });
-  // filing cabinet
-  const fc = addBox(0.65, 1.6, 0.85, mat(0xaaa, 0.3, 0.5), 3.2, 0.8, -2.0);
-  bigFalls.push({ mesh: fc, targetRot: -0.85, speed: 0, done: false, axis: 'z' });
-  // windows
-  [-2, 2].forEach(z => {
-    const w = addBox(0.06, 1.4, 1.9, new THREE.MeshStandardMaterial({ color: 0x87ceeb, transparent: true, opacity: 0.38 }), 4.9, 1.8, z);
-    addBox(0.04, 1.6, 2.1, mat(0xffffff, 0.5), 4.92, 1.8, z);
-    makeInteractive(w, 'window', '⚠ WINDOW HAZARD — Step Back!');
-  });
-  // shelf + cups
-  addBox(0.08, 0.06, 1.6, mat(0xa07850, 0.6), -4.5, 1.5, 1.0);
-  [0xc74c3c, 0x3498db, 0xf1c40f].forEach((c, i) => {
-    const cup = addCyl(0.08, 0.07, 0.2, 12, mat(c, 0.5), -4.42, 1.62, 0.2 + i * 0.5);
-    fallingObjects.push({ mesh: cup, targetY: 0.1, done: false });
-  });
-  // fluorescent lights
-  [-2, 0, 2].forEach(x => {
-    const f = addBox(0.14, 0.06, 1.6, new THREE.MeshStandardMaterial({ color: 0xfffde7, emissive: new THREE.Color(0xfffde7), emissiveIntensity: 0.7 }), x, 2.9, 0);
-    f.name = 'fluor';
-  });
-  // chair
-  addCyl(0.38, 0.38, 0.1, 20, mat(0x333, 0.9), 0, 0.5, 0.9);
-  addCyl(0.04, 0.04, 0.55, 8, mat(0x555, 0.5), 0, 0.27, 0.9);
-  // helmet
-  const hcyl = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.2, 0.22, 16), mat(0xff6b35, 0.4, 0.3));
-  hcyl.position.set(0.9, 0.82, -1.0); scene.add(hcyl);
-  makeInteractive(hcyl, 'helmet', '⛑ Pick Up Helmet — Click!');
-  // medkit
-  medkitMesh = addBox(0.25, 0.18, 0.18, mat(0xe74c3c, 0.4), -2, 0.1, 2.5);
-  medkitMesh.visible = false; makeInteractive(medkitMesh, 'medkit', '🩺 Use Medkit — Click!');
-  // exit
-  buildExit(0, 4.2);
-  spawnDebris(4.2, 0xaaaaaa, 14);
-  camera.position.set(0, 1.6, 3.0);
-  yaw = Math.PI; pitch = 0; euler.set(pitch, yaw, 0, 'YXZ'); camera.quaternion.setFromEuler(euler);
-}
-
-// ════════════════════════════════════════════════════════════════
-// INTERACTION
-// ════════════════════════════════════════════════════════════════
-function interact(obj) {
-  const type = obj.userData.type;
-  if (type === 'cover') {
-    if (covered) { setMsg('✅', 'You are already sheltered under the desk!'); return; }
-    covered = true; addScore(50); tickCheck('ck-cover');
-    setMsg('✅ CORRECT!', 'DROP, COVER & HOLD ON! Stay under the desk until the shaking stops!');
-    beep(660, 0.15, 0.3); setTimeout(() => beep(880, 0.15, 0.25), 150);
-    if (coverSpotMesh) { coverSpotMesh.material.color.setHex(0x00ff88); coverSpotMesh.material.emissive = new THREE.Color(0x00ff88); coverSpotMesh.material.emissiveIntensity = 0.3; }
-  } else if (type === 'helmet') {
-    if (helmetWorn) return;
-    helmetWorn = true; addScore(30); tickCheck('ck-helmet');
-    obj.visible = false;
-    document.getElementById('helmet-tag').textContent = '⛑ HELMET: WORN';
-    document.getElementById('helmet-tag').classList.add('on');
-    setMsg('⛑ Helmet Equipped', 'Good thinking! The hard hat protects you from falling debris.');
-    beep(880, 0.12, 0.25); setTimeout(() => beep(1100, 0.12, 0.2), 120);
-  } else if (type === 'medkit') {
-    if (healed) { setMsg('🩺', 'You already used the medkit!'); return; }
-    healed = true; addScore(40); tickCheck('ck-heal');
-    setHealth(100 - health);
-    obj.visible = false;
-    setMsg('🩺 Healed!', 'Injuries treated. Health restored! Now find the EXIT and evacuate safely.');
-    beep(550, 0.2, 0.3); setTimeout(() => beep(660, 0.2, 0.25), 200);
-  } else if (type === 'exit') {
-    if (phase !== 'recovery') { setMsg('⚠', 'The earthquake is still happening! Wait until it stops.'); return; }
-    addScore(100); tickCheck('ck-exit');
-    endGame(true);
-  } else if (type === 'window') {
-    if (shaking) { setHealth(-12); flashRed(); setMsg('⚠ GLASS HAZARD!', 'Windows shatter during earthquakes! Flying glass is deadly. Move AWAY!'); }
-    else setMsg('⚠ Window', 'Stay away from windows during an earthquake — glass can shatter violently.');
-  }
-}
-
-// ════════════════════════════════════════════════════════════════
-// QUAKE PHASE
-// ════════════════════════════════════════════════════════════════
-function startQuake() {
-  phase = 'quake'; shaking = true;
-  setPhase('⚠ EARTHQUAKE');
-  playAlarm();
-  timers.push(setTimeout(() => playRumble(12), 500));
+// ─── QUAKE / FIRE ────────────────────────────────────────────────────────────
+function startQuake(){
+  phase='quake';shaking=true;setPhase('EARTHQUAKE');
+  playAlarm();timers.push(setTimeout(playRumble,500));
   document.getElementById('shake').classList.add('on');
-  setMsg('⚠ EARTHQUAKE!', 'DROP, COVER, AND HOLD ON! Get under the desk NOW! Stay away from windows!');
-  roomPt.intensity = 0.3; ambLight.intensity = 0.2;
-
-  // Damage if uncovered after 3s
-  timers.push(setTimeout(() => {
-    dropAllObjects();
-    playCrash();
-    if (!covered) {
-      setHealth(helmetWorn ? -15 : -25);
-      flashRed();
-      setMsg('💥 HIT BY DEBRIS!', 'Falling objects struck you! Get under the desk immediately!');
-    }
-  }, 3000));
-
-  // Extra damage at 6s if still not covered
-  timers.push(setTimeout(() => {
-    if (!covered) { setHealth(helmetWorn ? -8 : -15); flashRed(); }
-  }, 6000));
-
-  // Window proximity — checked every 2s
-  const wi = setInterval(() => {
-    if (!shaking) return;
-    const windows = interactive.filter(o => o.userData.type === 'window');
-    for (const w of windows) {
-      const wp = new THREE.Vector3(); w.getWorldPosition(wp);
-      if (camera.position.distanceTo(wp) < 1.8) {
-        setHealth(-7); flashRed();
-        setMsg('⚠ TOO CLOSE!', 'You are near a window! Windows explode during earthquakes. Move back!');
-        break;
-      }
-    }
-  }, 2000);
+  setMsg('EARTHQUAKE!','DROP, COVER, HOLD ON! Get under the glowing desk zone!');
+  roomPt.intensity=0.3;ambLight.intensity=0.2;
+  timers.push(setTimeout(function(){
+    dropAll();playCrash();
+    if(!covered){setHealth(helmetWorn?-15:-28);flashRed();setMsg('DEBRIS HIT!','Get under the desk NOW!');}
+  },3000));
+  timers.push(setTimeout(function(){if(!covered){setHealth(helmetWorn?-8:-18);flashRed();}},6500));
+  var wi=setInterval(function(){
+    if(!shaking)return;
+    interactive.filter(function(o){return o.userData.type==='window';}).forEach(function(w){
+      var wp=new THREE.Vector3();w.getWorldPosition(wp);
+      var camWorld=new THREE.Vector3();camera.getWorldPosition(camWorld);
+      if(camWorld.distanceTo(wp)<1.9){setHealth(-7);flashRed();setMsg('TOO CLOSE!','Move away from windows!');}
+    });
+  },2200);
   intervals.push(wi);
-
-  // End quake after 12s
-  timers.push(setTimeout(() => endQuake(), 12000));
+  timers.push(setTimeout(endDisaster,12000));
 }
 
-function dropAllObjects() {
-  fallingObjects.forEach(fo => {
-    const startY = fo.mesh.position.y;
-    const dur = 400 + Math.random() * 300;
-    const t0 = performance.now();
-    const rx = (Math.random() - 0.5) * 2.5, rz = (Math.random() - 0.5) * 2.5;
-    const sRx = fo.mesh.rotation.x, sRz = fo.mesh.rotation.z;
-    const animate = () => {
-      if (fo.done) return;
-      const p = Math.min((performance.now() - t0) / dur, 1);
-      const e = 1 - Math.pow(1 - p, 3);
-      fo.mesh.position.y = startY + (fo.targetY - startY) * e;
-      fo.mesh.rotation.x = sRx + rx * e;
-      fo.mesh.rotation.z = sRz + rz * e;
-      if (p < 1) requestAnimationFrame(animate);
-      else fo.done = true;
-    };
-    animate();
-  });
-  bigFalls.forEach(bf => {
-    const startRot = bf.mesh.rotation[bf.axis];
-    const dur = 700 + Math.random() * 300;
-    const t0 = performance.now();
-    const animate = () => {
-      if (bf.done) return;
-      const p = Math.min((performance.now() - t0) / dur, 1);
-      const e = 1 - Math.pow(1 - p, 3);
-      bf.mesh.rotation[bf.axis] = startRot + bf.targetRot * e;
-      if (p < 1) requestAnimationFrame(animate);
-      else bf.done = true;
-    };
-    animate();
-  });
-  debris.forEach(d => d.visible = true);
+function startFire(){
+  phase='quake';burning=true;setPhase('FIRE EMERGENCY');
+  playFireAlarm();
+  document.getElementById('shake').classList.add('fire');
+  document.getElementById('smoke-ov').classList.add('on');
+  scene.fog=new THREE.Fog(0x0d0500,4,13);
+  setMsg('FIRE!','Building on fire! Grab extinguisher, wear your mask, find the EXIT!');
+  roomPt.intensity=0.2;ambLight.color.setHex(0x331100);
+  var fi=setInterval(function(){
+    if(!burning)return;
+    if(!helmetWorn){setHealth(-8);flashRed();setMsg('SMOKE!','Find the respirator mask quickly!');}
+    else setHealth(-3);
+  },3500);
+  intervals.push(fi);
+  timers.push(setTimeout(function(){if(!covered){setHealth(-20);flashRed();setMsg('FLAMES!','Get to the extinguisher!');}},4000));
+  timers.push(setTimeout(endDisaster,15000));
 }
 
-function endQuake() {
-  shaking = false; phase = 'recovery';
-  document.getElementById('shake').classList.remove('on');
-  intervals.forEach(clearInterval); intervals.length = 0;
-  roomPt.intensity = 0.6; ambLight.intensity = 0.35; redLight.intensity = 0;
-  setPhase('Recovery Phase');
-  if (!covered && !helmetWorn) setHealth(-10);
-  setMsg('Shaking Has Stopped', 'Assess your injuries. Find the FIRST AID KIT, then locate the EXIT to evacuate.');
-  beep(220, 0.4, 0.25);
-  timers.push(setTimeout(() => {
-    if (medkitMesh) medkitMesh.visible = true;
-    setMsg('🩺 Medkit Appeared', 'A first aid kit is nearby. Use it before evacuating, then find the EXIT.');
-  }, 1500));
-  timers.push(setTimeout(() => {
-    if (exitGroup) exitGroup.visible = true;
-    setMsg('🚪 EXIT Available', 'The emergency exit is now unlocked. Navigate carefully and evacuate!');
-  }, 4000));
+function endDisaster(){
+  shaking=false;burning=false;phase='recovery';
+  document.getElementById('shake').className='';
+  intervals.forEach(clearInterval);intervals.length=0;
+  roomPt.intensity=0.5;ambLight.intensity=0.3;redPt.intensity=0;
+  setPhase('Recovery');
+  if(!covered&&!helmetWorn)setHealth(-10);
+  setMsg('All Clear','Find the FIRST AID KIT, then locate the EXIT!');
+  beep(220,0.4,0.2);
+  timers.push(setTimeout(function(){
+    if(medkitObj)medkitObj.visible=true;
+    setMsg('Medkit Available','First aid kit appeared! Use it, then find the EXIT!');
+  },1500));
+  timers.push(setTimeout(function(){
+    if(exitObj)exitObj.visible=true;
+    setMsg('EXIT Unlocked','Emergency exit is open! Evacuate now!');
+  },3500));
 }
 
-// ════════════════════════════════════════════════════════════════
-// END GAME
-// ════════════════════════════════════════════════════════════════
-function endGame(won, reason = '') {
-  phase = 'end'; shaking = false;
-  document.getElementById('shake').classList.remove('on');
-  timers.forEach(clearTimeout); intervals.forEach(clearInterval);
-  const mo = document.getElementById('modal'); mo.classList.add('on');
-  const ti = document.getElementById('modal-title'), bd = document.getElementById('modal-body');
-  document.getElementById('modal-score').textContent = 'Score: ' + score;
-  if (won) {
-    ti.textContent = '✓ SURVIVED'; ti.className = 'win';
-    const tips = [];
-    if (!covered)     tips.push('• Always DROP and take COVER under a sturdy desk during shaking.');
-    if (!helmetWorn)  tips.push('• A hard hat reduces head injury risk from falling debris.');
-    if (!healed)      tips.push('• Treat injuries with first aid before evacuating when safe.');
-    bd.textContent = 'You safely evacuated the building!\n\n' + (tips.length ? 'Tips:\n' + tips.join('\n') : 'Excellent — perfect safety protocol!');
-    beep(440, 0.15, 0.3); setTimeout(() => beep(554, 0.15, 0.3), 180); setTimeout(() => beep(659, 0.25, 0.35), 360);
+function endGame(won){
+  phase='end';shaking=false;burning=false;
+  document.getElementById('shake').className='';
+  timers.forEach(clearTimeout);intervals.forEach(clearInterval);
+  var mo=document.getElementById('modal');mo.classList.add('on');
+  var ti=document.getElementById('modal-title'),bd=document.getElementById('modal-body');
+  document.getElementById('modal-score').textContent='Score: '+score;
+  if(won){
+    ti.textContent='SURVIVED';ti.className='win';
+    var tips=[];
+    if(!covered)tips.push('- Always DROP and COVER under a sturdy table immediately.');
+    if(!helmetWorn)tips.push('- Head protection saves lives from falling debris.');
+    if(!healed)tips.push('- Treat injuries before evacuating when it is safe.');
+    bd.textContent='You successfully evacuated!\n\n'+(tips.length?'Tips:\n'+tips.join('\n'):'Perfect protocol! Excellent!');
+    beep(440,0.15,0.3);setTimeout(function(){beep(554,0.15,0.3);},180);setTimeout(function(){beep(659,0.25,0.35);},360);
   } else {
-    ti.textContent = '✗ FAILED'; ti.className = 'lose';
-    bd.textContent = 'You did not survive the earthquake.\n\nRemember:\n• DROP to the ground immediately\n• Take COVER under a sturdy desk or table\n• HOLD ON until all shaking stops\n• Never stand near windows during an earthquake';
-    beep(220, 0.5, 0.4);
+    ti.textContent='FAILED';ti.className='lose';
+    bd.textContent='You did not survive.\n\nRemember:\n- DROP to the ground immediately\n- COVER under a sturdy desk\n- HOLD ON until shaking stops\n- Stay away from windows\n- In fire: stay low and find the exit fast';
+    beep(220,0.5,0.4);
   }
 }
 
-// ════════════════════════════════════════════════════════════════
-// RENDER LOOP
-// ════════════════════════════════════════════════════════════════
-let lastTs = 0;
-function loop(ts) {
-  requestAnimationFrame(loop);
-  const dt = Math.min((ts - lastTs) / 1000, 0.05); lastTs = ts;
+// ─── VR CONTROLLER VISUAL RAY UPDATE ────────────────────────────────────────
+function updateControllerRays() {
+  if (!vrMode) return;
+  controllers.forEach(function(ctrl, idx) {
+    if (!ctrl || !controllerConnected[idx]) return;
+    // Highlight ray when pointing at interactive object
+    var tempMat2 = new THREE.Matrix4();
+    tempMat2.identity().extractRotation(ctrl.matrixWorld);
+    vrRaycaster.ray.origin.setFromMatrixPosition(ctrl.matrixWorld);
+    vrRaycaster.ray.direction.set(0,0,-1).applyMatrix4(tempMat2);
+    vrRaycaster.far = 6;
+    var hits2 = vrRaycaster.intersectObjects(interactive, true);
+    if (controllerRays[idx]) {
+      controllerRays[idx].material.opacity = hits2.length > 0 ? 1.0 : 0.4;
+    }
+  });
+}
 
+// ─── RENDER LOOP ─────────────────────────────────────────────────────────────
+var lastTs=0;
+renderer.setAnimationLoop(function(ts) {
+  if (!ts) ts = performance.now();
+  var dt=Math.min((ts-lastTs)/1000,0.05);lastTs=ts;
+
+  pollGamepads();
   handleMovement(dt);
 
-  // Shake camera
-  if (shaking) {
-    camera.position.x += (Math.random() - 0.5) * 0.04;
-    camera.position.z += (Math.random() - 0.5) * 0.04;
-    redLight.intensity = 0.1 + Math.random() * 0.15;
-    ambLight.color.setRGB(0.32 + Math.random() * 0.08, 0.1, 0.04);
-    // flicker office lights
-    scene.traverse(o => { if (o.name === 'fluor') o.material.emissiveIntensity = Math.random() > 0.45 ? 0.7 : 0; });
+  // VR trigger interaction
+  if (vrMode) {
+    if (vrInteractCooldown > 0) vrInteractCooldown -= dt;
+    handleVRInteract();
+    updateControllerRays();
+  }
+
+  // Update trigger was pressed
+  for (var ti2=0; ti2<2; ti2++) {
+    triggerWasPressed[ti2] = triggerPressed[ti2];
+  }
+
+  if(shaking){
+    if (!vrMode) { // Don't shake camera in VR (causes motion sickness)
+      camera.position.x+=(Math.random()-0.5)*0.05;
+      camera.position.z+=(Math.random()-0.5)*0.05;
+    } else {
+      // In VR, shake the rig slightly
+      playerRig.position.x+=(Math.random()-0.5)*0.02;
+      playerRig.position.z+=(Math.random()-0.5)*0.02;
+    }
+    redPt.intensity=0.1+Math.random()*0.2;
+    ambLight.color.setRGB(0.3+Math.random()*0.1,0.08,0.04);
+    scene.traverse(function(o){if(o.name==='fluor')o.material.emissiveIntensity=Math.random()>0.4?0.7:0;});
+  } else if(burning){
+    ambLight.color.setRGB(0.22+Math.random()*0.05,0.06+Math.random()*0.02,0.0);
+    updateFire();
   } else {
-    ambLight.color.setHex(0x443322);
+    ambLight.color.setHex(currentEnv==='fire'?0x220800:0x443322);
   }
 
-  // Pulse cover spot
-  if (coverSpotMesh && !covered) {
-    const p = Math.sin(ts * 0.003) * 0.15 + 0.3;
-    coverSpotMesh.material.opacity = p;
-    coverSpotMesh.position.y = 0.04 + Math.sin(ts * 0.004) * 0.008;
+  if(coverSpot&&!covered&&coverSpot.material){
+    var p=Math.sin(ts*0.003)*0.15+0.32;
+    if(coverSpot.material.opacity!==undefined)coverSpot.material.opacity=p;
+    if(coverSpot.position)coverSpot.position.y=0.04+Math.sin(ts*0.004)*0.008;
+  }
+  if(medkitObj&&medkitObj.visible){
+    medkitObj.traverse(function(c){if(c.isLight)c.intensity=0.4+Math.sin(ts*0.005)*0.3;});
+  }
+  if(helmetObj&&!helmetWorn){
+    helmetObj.traverse(function(c){if(c.isLight)c.intensity=0.4+Math.sin(ts*0.004)*0.25;});
   }
 
-  // Tooltip
-  const h = getHit();
-  setTooltip(h && h.userData.label ? h.userData.label : '');
+  if (!vrMode) {
+    var h=getHit();
+    setTip(h&&h.userData&&h.userData.label?h.userData.label:'');
+  } else {
+    // In VR show tooltip from gaze
+    var gh = getVRGazeHit();
+    setTip(gh&&gh.userData&&gh.userData.label?gh.userData.label:'');
+  }
 
-  renderer.render(scene, camera);
-}
-requestAnimationFrame(loop);
+  renderer.render(scene,camera);
+});
 
-// ════════════════════════════════════════════════════════════════
-// SPLASH / START
-// ════════════════════════════════════════════════════════════════
-let chosenEnv = 'bedroom';
-document.querySelectorAll('.env-btn').forEach(b => {
-  b.addEventListener('click', () => {
-    document.querySelectorAll('.env-btn').forEach(x => x.classList.remove('on'));
-    b.classList.add('on'); chosenEnv = b.dataset.e;
+// ─── SPLASH ──────────────────────────────────────────────────────────────────
+var chosenEnv='bedroom';
+document.querySelectorAll('.env-btn').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('.env-btn').forEach(function(x){x.classList.remove('on');});
+    b.classList.add('on');chosenEnv=b.dataset.e;
   });
 });
 
-document.getElementById('go').addEventListener('click', () => {
+function startGame(env) {
   getAudio();
-  let env = chosenEnv;
-  if (env === 'random') env = ['bedroom', 'living', 'office'][Math.floor(Math.random() * 3)];
-
-  clearAll();
-  buildLights();
-  if (env === 'bedroom')       buildBedroom();
-  else if (env === 'living')   buildLiving();
-  else                         buildOffice();
-
+  if(env==='random'){var opts=['bedroom','living','office','fire'];env=opts[Math.floor(Math.random()*opts.length)];}
+  currentEnv=env;
+  clearAll();buildLights();
+  if(env==='bedroom')buildBedroom();
+  else if(env==='living')buildLiving();
+  else if(env==='office')buildOffice();
+  else buildFireWarehouse();
   document.getElementById('splash').classList.add('hide');
   document.getElementById('hud').classList.add('on');
+  if(env==='fire'){
+    document.getElementById('ck-cover').textContent='Grab Extinguisher';
+    document.getElementById('ck-helmet').textContent='Wear Respirator';
+    document.getElementById('helmet-hud').textContent='MASK: OFF';
+  }
   setPhase('Exploring');
-  setMsg('Look Around', `You are in a ${env}. Explore the room. Note the glowing SAFE ZONE under the desk, the orange HELMET, and the layout. The earthquake begins in ~8 seconds.`);
+  setMsg('Look Around','Find the cyan SAFE ZONE on the floor, the orange HELMET, and the EXIT. Disaster begins in ~8 seconds!');
+  timers.push(setTimeout(function(){setMsg('WARNING',env==='fire'?'Smoke detected! Fire is starting. Find extinguisher and mask!':'Seismic activity! Get to the glowing cyan SAFE ZONE under the desk!');},5000));
+  timers.push(setTimeout(function(){setMsg('IMMINENT!','Brace yourself!');beep(330,0.3,0.3);},7200));
+  timers.push(setTimeout(function(){if(env==='fire')startFire();else startQuake();},8500));
 
-  timers.push(setTimeout(() => setMsg('⚠ Warning', 'Seismic activity detected nearby. Locate the glowing safe zone under the desk NOW!'), 5000));
-  timers.push(setTimeout(() => { setMsg('⚠ IMMINENT!', 'Strong earthquake incoming — be ready to DROP, COVER, HOLD ON!'); beep(330, 0.3, 0.3); }, 6800));
-  timers.push(setTimeout(() => startQuake(), 8200));
+  // If we entered VR, set up select listeners
+  if (vrMode) {
+    setupVRSelectListener();
+  }
+}
+
+document.getElementById('go').addEventListener('click',function(){
+  startGame(chosenEnv);
 });
 
-document.getElementById('modal-btn').addEventListener('click', () => location.reload());
+document.getElementById('vr-btn').addEventListener('click',function(){
+  enterVR();
+  // Start game after a short delay to let VR initialize
+  setTimeout(function(){
+    startGame(chosenEnv);
+  }, 800);
+});
+
+document.getElementById('modal-btn').addEventListener('click',function(){location.reload();});
+
+// Init VR check
+setupVR();
+
+// Gamepad polling for controller detection display
+setInterval(function(){
+  if (vrMode) return;
+  var pads = navigator.getGamepads ? navigator.getGamepads() : [];
+  var found = false;
+  for(var i=0;i<pads.length;i++){
+    if(pads[i]){found=true;break;}
+  }
+  if(found){
+    document.getElementById('vr-status').textContent='🎮 Gamepad detected! Left stick=Move, Right stick=Look, Trigger=Interact';
+    document.getElementById('vr-status').style.color='#ffd700';
+  }
+},1000);
 </script>
 </body>
 </html>
