@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Survival Protocol VR</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#000;overflow:hidden;font-family:'Share Tech Mono',monospace;color:#fff;}
+canvas{display:block;}
+
+/* ── SPLASH ── */
+#splash{
+  position:fixed;inset:0;z-index:999;
+  background:radial-gradient(ellipse at 50% 35%,#0a0f1a 0%,#000 100%);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;
+  transition:opacity .7s;
+}
+#splash.hide{opacity:0;pointer-events:none;}
+
+.sp-emblem{
+  width:100px;height:100px;position:relative;margin-bottom:.5rem;
+}
+.sp-emblem svg{width:100%;height:100%;}
+
+.logo{
+  font-family:'Orbitron',sans-serif;
+  font-size:clamp(1.8rem,5vw,3.2rem);
+  font-weight:900;letter-spacing:.18em;
+  background:linear-gradient(135deg,#ff4500 0%,#ff8c00 50%,#ffd700 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  text-shadow:none;
+  animation:pulse-logo 3s ease-in-out infinite;
+}
+@keyframes pulse-logo{0%,100%{filter:brightness(1);}50%{filter:brightness(1.25);}}
+
+.sub{
+  font-size:.72rem;letter-spacing:.4em;color:#5a7fa0;
+  text-transform:uppercase;margin-top:-.3rem;
+}
+.tagline{
+  font-size:.68rem;color:#ff4500aa;letter-spacing:.2em;
+  text-transform:uppercase;border-top:1px solid #ff450022;padding-top:.6rem;
+  max-width:420px;text-align:center;
+}
+
+.env-label{font-size:.58rem;letter-spacing:.35em;color:#5a7fa0;text-transform:uppercase;margin-top:.6rem;}
+.env-row{display:flex;gap:.6rem;flex-wrap:wrap;justify-content:center;}
+.env-btn{
+  padding:.55rem 1.1rem;border:1px solid #ff450030;background:#ff450008;
+  color:#ff8c00;font-family:'Share Tech Mono',monospace;font-size:.75rem;
+  letter-spacing:.1em;cursor:pointer;transition:.2s;text-transform:uppercase;
+  border-radius:2px;position:relative;overflow:hidden;
+}
+.env-btn::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,#ff450015,transparent);transform:translateX(-100%);transition:.3s;}
+.env-btn:hover::after,.env-btn.on::after{transform:translateX(100%);}
+.env-btn:hover,.env-btn.on{background:#ff450020;border-color:#ff4500;color:#ffd700;}
+
+.go-btn{
+  margin-top:.5rem;padding:.85rem 3rem;
+  background:linear-gradient(90deg,#ff4500,#cc3300);
+  border:none;color:#fff;font-family:'Orbitron',sans-serif;
+  font-size:.9rem;letter-spacing:.25em;cursor:pointer;font-weight:700;
+  border-radius:3px;box-shadow:0 0 30px #ff450060;transition:.25s;
+  text-transform:uppercase;
+}
+.go-btn:hover{transform:scale(1.04);box-shadow:0 0 50px #ff450090;}
+
+.hint{font-size:.62rem;color:#304550;letter-spacing:.1em;margin-top:.3rem;text-align:center;max-width:400px;line-height:1.9;}
+
+/* ── HUD ── */
+#hud{position:fixed;inset:0;z-index:100;pointer-events:none;display:none;}
+#hud.on{display:block;}
+
+#top-bar{
+  position:absolute;top:0;left:0;right:0;padding:.6rem 1rem;
+  background:linear-gradient(180deg,#000c 0%,transparent 100%);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.sim-name{
+  font-family:'Orbitron',sans-serif;font-size:.7rem;letter-spacing:.3em;
+  color:#ff4500;text-transform:uppercase;
+}
+.ph-wrap{display:flex;align-items:center;gap:.6rem;}
+.ph-tag{font-size:.52rem;letter-spacing:.3em;color:#ff4500;background:#ff450012;
+  border:1px solid #ff450040;padding:.15rem .5rem;text-transform:uppercase;}
+.ph-name{font-size:.85rem;letter-spacing:.2em;color:#fff;text-transform:uppercase;font-family:'Orbitron',sans-serif;}
+
+#msg-box{
+  position:absolute;bottom:65px;left:50%;transform:translateX(-50%);
+  width:min(500px,92vw);
+  background:#0009;border:1px solid #ff450035;
+  border-top:2px solid #ff4500;padding:.85rem 1.1rem;text-align:center;
+  backdrop-filter:blur(6px);
+}
+#msg-tag{font-size:.52rem;letter-spacing:.35em;color:#ff4500;margin-bottom:.3rem;text-transform:uppercase;}
+#msg-txt{font-size:.82rem;color:#e8e0d0;line-height:1.6;}
+
+#hp-wrap{position:absolute;bottom:18px;left:18px;display:flex;align-items:center;gap:.5rem;}
+#hp-lbl{font-size:.52rem;letter-spacing:.25em;color:#5a7fa0;text-transform:uppercase;}
+#hp-bg{width:120px;height:6px;background:#0a0a0a;border:1px solid #222;}
+#hp-fill{height:100%;width:100%;background:linear-gradient(90deg,#00e5cc,#00b89c);transition:width .5s,background .5s;}
+
+#score-wrap{position:absolute;bottom:18px;right:18px;text-align:right;}
+#score-lbl{font-size:.52rem;letter-spacing:.25em;color:#5a7fa0;display:block;text-transform:uppercase;}
+#score-val{color:#ffd700;font-size:1.1rem;font-family:'Orbitron',sans-serif;}
+
+#ckl{
+  position:absolute;top:52px;left:14px;
+  background:#0009;border:1px solid #222;border-left:2px solid #ff4500;
+  padding:.6rem .85rem;min-width:190px;backdrop-filter:blur(4px);
+}
+.ck-title{font-size:.5rem;letter-spacing:.3em;color:#ff4500;margin-bottom:.4rem;text-transform:uppercase;}
+.ck{font-size:.7rem;color:#333;display:flex;gap:.4rem;align-items:center;margin:.22rem 0;transition:color .3s;}
+.ck::before{content:'○';}
+.ck.done{color:#00e5cc;}
+.ck.done::before{content:'●';}
+
+#helmet-hud{
+  position:absolute;top:52px;right:14px;
+  font-size:.55rem;letter-spacing:.18em;color:#444;
+  background:#0009;border:1px solid #222;border-right:2px solid #444;
+  padding:.3rem .65rem;transition:all .3s;
+}
+#helmet-hud.on{color:#00e5cc;border-color:#00e5cc;background:#00e5cc10;}
+
+#xhair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px;}
+#xhair::before,#xhair::after{content:'';position:absolute;background:#ff450099;}
+#xhair::before{top:50%;left:0;right:0;height:1px;}
+#xhair::after{left:50%;top:0;bottom:0;width:1px;}
+.xdot{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:3px;border-radius:50%;background:#ff4500;}
+
+/* ── misc overlays ── */
+#flash{position:fixed;inset:0;z-index:200;background:#f00;opacity:0;pointer-events:none;transition:opacity .15s;}
+#smoke-overlay{position:fixed;inset:0;z-index:190;background:rgba(40,20,10,0);pointer-events:none;transition:background 2s;}
+#smoke-overlay.on{background:rgba(40,20,10,0.35);}
+
+#shake{position:fixed;inset:0;z-index:99;pointer-events:none;border:3px solid transparent;}
+#shake.on{border-color:#ff450060;animation:sk .12s infinite;}
+@keyframes sk{0%{transform:translate(0,0);}25%{transform:translate(-4px,2px);}50%{transform:translate(3px,-3px);}75%{transform:translate(-2px,4px);}100%{transform:translate(3px,-2px);}}
+
+#tooltip{
+  position:fixed;top:56%;left:50%;transform:translate(-50%,-50%);
+  background:#000b;border:1px solid #ff450055;color:#ffd700;
+  font-size:.7rem;letter-spacing:.15em;padding:.3rem .8rem;
+  pointer-events:none;display:none;text-transform:uppercase;
+}
+#pointer-hint{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,44px);
+  background:#000a;border:1px solid #ff450040;color:#ff4500;
+  font-size:.6rem;letter-spacing:.15em;padding:.28rem .75rem;
+  pointer-events:none;text-align:center;
+}
+
+/* ── MODAL ── */
+#modal{
+  position:fixed;inset:0;z-index:500;background:#000d;
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:1.1rem;
+  backdrop-filter:blur(8px);
+}
+#modal.on{display:flex;}
+#modal-title{font-family:'Orbitron',sans-serif;font-size:2rem;letter-spacing:.2em;font-weight:900;text-transform:uppercase;}
+#modal-title.win{color:#00e5cc;}
+#modal-title.lose{color:#ff2244;}
+#modal-body{color:#5a7fa0;font-size:.82rem;max-width:420px;text-align:center;line-height:1.8;white-space:pre-line;}
+#modal-score{color:#ffd700;font-size:1.3rem;letter-spacing:.3em;font-family:'Orbitron',sans-serif;}
+#modal-btn{
+  padding:.7rem 2.2rem;background:transparent;border:1px solid #ff4500;
+  color:#ff4500;font-family:'Share Tech Mono',monospace;letter-spacing:.18em;
+  font-size:.85rem;cursor:pointer;transition:.25s;
+}
+#modal-btn:hover{background:#ff450020;}
+
+/* fire glow effect */
+@keyframes fire-flicker{
+  0%,100%{box-shadow:0 0 40px #ff450060 inset;}
+  33%{box-shadow:0 0 60px #ff220060 inset;}
+  66%{box-shadow:0 0 30px #ff880060 inset;}
+}
+#shake.fire{border-color:#ff660070;animation:sk .12s infinite,fire-flicker 0.5s infinite;}
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <div class="sp-emblem">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <polygon points="50,5 95,95 5,95" fill="none" stroke="#ff4500" stroke-width="2.5" opacity="0.8"/>
+      <polygon points="50,18 83,88 17,88" fill="none" stroke="#ff8c00" stroke-width="1.5" opacity="0.5"/>
+      <circle cx="50" cy="65" r="10" fill="none" stroke="#ffd700" stroke-width="2"/>
+      <line x1="50" y1="30" x2="50" y2="52" stroke="#ffd700" stroke-width="2.5" stroke-linecap="round"/>
+      <circle cx="50" cy="58" r="2.5" fill="#ffd700"/>
+    </svg>
+  </div>
+  <div class="logo">SURVIVAL PROTOCOL</div>
+  <div class="sub">Disaster Safety Training · VR Simulation</div>
+  <div class="tagline">Choose your disaster scenario and train for survival</div>
+  <div class="env-label">Select Disaster Scenario</div>
+  <div class="env-row">
+    <button class="env-btn on" data-e="bedroom">🛏 Bedroom<br><small style="font-size:.55rem;color:#666">Earthquake</small></button>
+    <button class="env-btn" data-e="living">🛋 Living Room<br><small style="font-size:.55rem;color:#666">Earthquake</small></button>
+    <button class="env-btn" data-e="office">💼 Office<br><small style="font-size:.55rem;color:#666">Earthquake</small></button>
+    <button class="env-btn" data-e="fire">🔥 Warehouse<br><small style="font-size:.55rem;color:#666">Fire Disaster</small></button>
+    <button class="env-btn" data-e="random">🎲 Random</button>
+  </div>
+  <button class="go-btn" id="go">▶ ENTER SIMULATION</button>
+  <div class="hint">
+    WASD / Arrow Keys = Move &nbsp;|&nbsp; Mouse = Look &nbsp;|&nbsp; Click to lock pointer<br>
+    Aim crosshair at glowing objects &amp; click to interact
+  </div>
+</div>
+
+<div id="hud">
+  <div id="top-bar">
+    <span class="sim-name">⬡ SURVIVAL PROTOCOL</span>
+    <div class="ph-wrap">
+      <span class="ph-tag">PHASE</span>
+      <span class="ph-name" id="ph-name">Standby</span>
+    </div>
+  </div>
+  <div id="ckl">
+    <div class="ck-title">Mission Objectives</div>
+    <div class="ck" id="ck-cover">Take Cover / Evacuate</div>
+    <div class="ck" id="ck-helmet">Wear Helmet / Mask</div>
+    <div class="ck" id="ck-heal">Use First Aid Kit</div>
+    <div class="ck" id="ck-exit">Exit Building</div>
+  </div>
+  <div id="helmet-hud">⛑ HELMET: OFF</div>
+  <div id="msg-box">
+    <div id="msg-tag">Guidance</div>
+    <div id="msg-txt">Look around and explore your surroundings.</div>
+  </div>
+  <div id="hp-wrap">
+    <span id="hp-lbl">Health</span>
+    <div id="hp-bg"><div id="hp-fill"></div></div>
+  </div>
+  <div id="score-wrap">
+    <span id="score-lbl">Score</span>
+    <span id="score-val">0</span>
+  </div>
+  <div id="xhair"><div class="xdot"></div></div>
+</div>
+
+<div id="tooltip"></div>
+<div id="pointer-hint">Click the screen to lock mouse &amp; look around</div>
+<div id="flash"></div>
+<div id="smoke-overlay"></div>
+<div id="shake"></div>
+
+<div id="modal">
+  <div id="modal-title">—</div>
+  <div id="modal-body">—</div>
+  <div id="modal-score">Score: 0</div>
+  <button id="modal-btn">↻ RESTART</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+'use strict';
+// ══════════════════════════════════════════════
+// RENDERER
+// ══════════════════════════════════════════════
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0806);
+scene.fog = new THREE.Fog(0x0a0806, 8, 22);
+
+const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.05, 50);
+camera.position.set(0, 1.6, 2.5);
+scene.add(camera);
+
+window.addEventListener('resize', () => {
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+});
+
+// ══════════════════════════════════════════════
+// POINTER LOCK / LOOK
+// ══════════════════════════════════════════════
+let yaw = 0, pitch = 0, locked = false;
+const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+
+renderer.domElement.addEventListener('click', () => renderer.domElement.requestPointerLock());
+document.addEventListener('pointerlockchange', () => {
+  locked = !!document.pointerLockElement;
+  document.getElementById('pointer-hint').style.display = locked ? 'none' : 'block';
+});
+document.addEventListener('mousemove', e => {
+  if (!locked) return;
+  yaw   -= e.movementX * 0.002;
+  pitch -= e.movementY * 0.002;
+  pitch = Math.max(-1.15, Math.min(1.15, pitch));
+  euler.set(pitch, yaw, 0, 'YXZ');
+  camera.quaternion.setFromEuler(euler);
+});
+
+// ══════════════════════════════════════════════
+// MOVEMENT
+// ══════════════════════════════════════════════
+const keys = {};
+document.addEventListener('keydown', e => { keys[e.code] = true; });
+document.addEventListener('keyup',   e => { keys[e.code] = false; });
+
+const bounds = { minX:-3, maxX:3, minZ:-3, maxZ:3 };
+let coveringUnderTable = false;
+let coverY = 1.6; // target camera height
+const normalY = 1.6, underTableY = 0.55;
+
+function handleMovement(dt) {
+  if (!locked) return;
+  let mx = 0, mz = 0;
+  if (keys['KeyW']||keys['ArrowUp'])    mz -= 1;
+  if (keys['KeyS']||keys['ArrowDown'])  mz += 1;
+  if (keys['KeyA']||keys['ArrowLeft'])  mx -= 1;
+  if (keys['KeyD']||keys['ArrowRight']) mx += 1;
+  if (mx !== 0 || mz !== 0) {
+    const fwd = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+    const rgt = new THREE.Vector3( Math.cos(yaw), 0, -Math.sin(yaw));
+    const spd = coveringUnderTable ? 1.2 : 3.5;
+    const mv  = fwd.multiplyScalar(-mz * spd * dt).add(rgt.multiplyScalar(mx * spd * dt));
+    camera.position.add(mv);
+    camera.position.x = Math.max(bounds.minX, Math.min(bounds.maxX, camera.position.x));
+    camera.position.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, camera.position.z));
+  }
+  // smooth height transition
+  camera.position.y += (coverY - camera.position.y) * Math.min(1, dt * 5);
+}
+
+// ══════════════════════════════════════════════
+// RAYCASTER
+// ══════════════════════════════════════════════
+const raycaster = new THREE.Raycaster();
+const center = new THREE.Vector2(0, 0);
+const interactive = [];
+
+function getHit() {
+  raycaster.setFromCamera(center, camera);
+  const hits = raycaster.intersectObjects(interactive, true);
+  if (hits.length && hits[0].distance < 4.2) {
+    let o = hits[0].object;
+    while (o.parent && !o.userData.type) o = o.parent;
+    return o;
+  }
+  return null;
+}
+renderer.domElement.addEventListener('click', () => {
+  if (!locked) return;
+  const h = getHit();
+  if (h && h.userData.type) interact(h);
+});
+
+// ══════════════════════════════════════════════
+// AUDIO
+// ══════════════════════════════════════════════
+let audioCtx = null;
+function audio() { if (!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+function beep(f, d, v=0.3) {
+  const c=audio(), o=c.createOscillator(), g=c.createGain();
+  o.frequency.value=f; o.type='sine';
+  o.connect(g); g.connect(c.destination);
+  g.gain.setValueAtTime(v, c.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, c.currentTime+d);
+  o.start(); o.stop(c.currentTime+d);
+}
+function rumble(dur=10) {
+  const c=audio(), buf=c.createBuffer(1,c.sampleRate*dur,c.sampleRate);
+  const d=buf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1);
+  const s=c.createBufferSource(), fl=c.createBiquadFilter(), g=c.createGain();
+  fl.type='lowpass'; fl.frequency.value=110;
+  s.buffer=buf; s.connect(fl); fl.connect(g); g.connect(c.destination);
+  g.gain.setValueAtTime(0,c.currentTime);
+  g.gain.linearRampToValueAtTime(0.35,c.currentTime+0.8);
+  g.gain.linearRampToValueAtTime(0.25,c.currentTime+dur-1);
+  g.gain.linearRampToValueAtTime(0,c.currentTime+dur);
+  s.start();
+}
+function crash() {
+  const c=audio(), buf=c.createBuffer(1,c.sampleRate*0.6,c.sampleRate);
+  const d=buf.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=(Math.random()*2-1)*Math.exp(-i/(c.sampleRate*0.08));
+  const s=c.createBufferSource(), g=c.createGain(); g.gain.value=0.65;
+  s.buffer=buf; s.connect(g); g.connect(c.destination); s.start();
+}
+function alarm() {
+  [0,.5,1,1.5].forEach(t=>{
+    setTimeout(()=>beep(880,.25,.4), t*1000);
+    setTimeout(()=>beep(660,.25,.4), t*1000+250);
+  });
+}
+function fireAlarm() {
+  [0,.4,.8,1.2,1.6,2,2.4].forEach(t=>{
+    setTimeout(()=>beep(1100,.18,.35), t*1000);
+    setTimeout(()=>beep(700,.18,.35), t*1000+200);
+  });
+}
+
+// ══════════════════════════════════════════════
+// HUD HELPERS
+// ══════════════════════════════════════════════
+let score=0, health=100;
+const T=[], IV=[];
+function setPhase(n) { document.getElementById('ph-name').textContent=n; }
+function setMsg(tag, txt) { document.getElementById('msg-tag').textContent=tag; document.getElementById('msg-txt').textContent=txt; }
+function tick(id) { const e=document.getElementById(id); if(e) e.classList.add('done'); }
+function addScore(n) { score=Math.max(0,score+n); document.getElementById('score-val').textContent=score; }
+function setHealth(d) {
+  health=Math.max(0,Math.min(100,health+d));
+  const f=document.getElementById('hp-fill');
+  f.style.width=health+'%';
+  f.style.background=health>60
+    ?'linear-gradient(90deg,#00e5cc,#00b89c)'
+    :health>30
+    ?'linear-gradient(90deg,#f39c12,#e67e22)'
+    :'linear-gradient(90deg,#e74c3c,#c0392b)';
+  if(health<=0) endGame(false,'injury');
+}
+function flashRed() { const f=document.getElementById('flash'); f.style.opacity=0.5; setTimeout(()=>f.style.opacity=0,250); }
+function setTip(t) { const e=document.getElementById('tooltip'); e.textContent=t; e.style.display=t?'block':'none'; }
+
+// ══════════════════════════════════════════════
+// MESH HELPERS
+// ══════════════════════════════════════════════
+function mat(col, rough=0.8, metal=0, opts={}) {
+  return new THREE.MeshStandardMaterial({ color:col, roughness:rough, metalness:metal, ...opts });
+}
+function box(w,h,d,m,px,py,pz,rx=0,ry=0,rz=0) {
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);
+  mesh.position.set(px,py,pz); mesh.rotation.set(rx,ry,rz);
+  mesh.castShadow=true; mesh.receiveShadow=true; scene.add(mesh); return mesh;
+}
+function cyl(rt,rb,h,seg,m,px,py,pz) {
+  const mesh=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,seg),m);
+  mesh.position.set(px,py,pz); mesh.castShadow=true; scene.add(mesh); return mesh;
+}
+function plane(w,h,m,px,py,pz,rx=0,ry=0) {
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),m);
+  mesh.position.set(px,py,pz); mesh.rotation.set(rx,ry,0);
+  mesh.receiveShadow=true; scene.add(mesh); return mesh;
+}
+function makeInt(mesh, type, label) {
+  mesh.userData.type=type; mesh.userData.label=label;
+  mesh.traverse(c=>{c.userData.type=type; c.userData.label=label;});
+  interactive.push(mesh); return mesh;
+}
+
+// ══════════════════════════════════════════════
+// SHARED BUILDERS
+// ══════════════════════════════════════════════
+let ambLight, roomPt, redPt, firePt1, firePt2;
+let coverSpot=null, medkitGroup=null, exitGroup=null, helmetMesh=null;
+const fallingObjs=[], bigFalls=[], debrisMeshes=[];
+let shaking=false, burning=false;
+let phase='idle', helmetWorn=false, covered=false, healed=false;
+let currentEnv='bedroom';
+
+// Shared state timers
+function clearAll() {
+  [...scene.children].forEach(o=>{
+    scene.remove(o);
+    if(o.geometry) o.geometry.dispose();
+    if(o.material) { if(Array.isArray(o.material)) o.material.forEach(m=>m.dispose()); else o.material.dispose(); }
+  });
+  interactive.length=0; fallingObjs.length=0; bigFalls.length=0; debrisMeshes.length=0;
+  coverSpot=null; medkitGroup=null; exitGroup=null; helmetMesh=null;
+  T.forEach(clearTimeout); IV.forEach(clearInterval); T.length=0; IV.length=0;
+  score=0; health=100; helmetWorn=false; covered=false; healed=false; shaking=false; burning=false;
+  phase='idle'; coveringUnderTable=false; coverY=normalY;
+  document.getElementById('score-val').textContent='0';
+  const f=document.getElementById('hp-fill'); f.style.width='100%'; f.style.background='linear-gradient(90deg,#00e5cc,#00b89c)';
+  document.getElementById('helmet-hud').textContent='⛑ HELMET: OFF';
+  document.getElementById('helmet-hud').classList.remove('on');
+  ['ck-cover','ck-helmet','ck-heal','ck-exit'].forEach(id=>{const e=document.getElementById(id);if(e)e.classList.remove('done');});
+  document.getElementById('shake').classList.remove('on','fire');
+  document.getElementById('smoke-overlay').classList.remove('on');
+  scene.background=new THREE.Color(0x0a0806);
+  scene.fog=new THREE.Fog(0x0a0806,8,22);
+}
+
+function buildLights(warm=true) {
+  ambLight=new THREE.AmbientLight(warm?0x443322:0x223344, 0.5); scene.add(ambLight);
+  roomPt=new THREE.PointLight(0xfff8e1, 1.3, 18); roomPt.position.set(0,2.8,0); roomPt.castShadow=true; scene.add(roomPt);
+  redPt=new THREE.PointLight(0xff2200, 0, 10); redPt.position.set(0,2.5,0); scene.add(redPt);
+}
+
+function buildWalls(rw, rd, rh, floorCol, wallCol) {
+  plane(rw,rd, mat(floorCol,0.95), 0,0,0,-Math.PI/2);
+  plane(rw,rd, mat(0xf0ece8,0.7), 0,rh,0, Math.PI/2);
+  const wm=mat(wallCol,0.85);
+  plane(rw,rh,wm.clone(), 0,rh/2,-rd/2, 0,0);
+  plane(rw,rh,wm.clone(), 0,rh/2, rd/2, 0,Math.PI);
+  plane(rd,rh,wm.clone(),-rw/2,rh/2,0, 0, Math.PI/2);
+  plane(rd,rh,wm.clone(), rw/2,rh/2,0, 0,-Math.PI/2);
+  bounds.minX=-rw/2+0.35; bounds.maxX=rw/2-0.35;
+  bounds.minZ=-rd/2+0.35; bounds.maxZ=rd/2-0.35;
+}
+
+// ── DESK (safe zone) ──
+function buildDesk(px, pz, w=1.6) {
+  const g=new THREE.Group(); g.position.set(px,0,pz); scene.add(g);
+  // desk top
+  const top=new THREE.Mesh(new THREE.BoxGeometry(w,0.07,0.9), mat(0x8b6914,0.55));
+  top.position.y=0.76; top.castShadow=true; g.add(top);
+  // legs
+  const lm=mat(0x7a5d10,0.7);
+  [[-w/2+0.09,0.375,-0.42],[w/2-0.09,0.375,-0.42],[-w/2+0.09,0.375,0.42],[w/2-0.09,0.375,0.42]].forEach(([lx,ly,lz])=>{
+    const l=new THREE.Mesh(new THREE.BoxGeometry(0.07,0.75,0.07),lm);
+    l.position.set(lx,ly,lz); l.castShadow=true; g.add(l);
+  });
+  // back panel
+  const bp=new THREE.Mesh(new THREE.BoxGeometry(w,0.5,0.04),mat(0x7a5d10,0.7));
+  bp.position.set(0,0.5,-0.43); g.add(bp);
+  // glowing cover spot on floor
+  const sm=new THREE.MeshStandardMaterial({color:0x00e5cc,transparent:true,opacity:0.35,emissive:new THREE.Color(0x00e5cc),emissiveIntensity:0.2});
+  const spot=new THREE.Mesh(new THREE.CylinderGeometry(0.55,0.55,0.03,32),sm);
+  spot.position.set(px,0.04,pz); scene.add(spot);
+  coverSpot=spot;
+  makeInt(spot,'cover','▼ TAKE COVER — Click!');
+}
+
+// ── MEDKIT (looks like a real medkit) ──
+function buildMedkit(px, py, pz) {
+  const g=new THREE.Group(); g.position.set(px,py,pz); g.visible=false; scene.add(g);
+  // box body — red
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.32,0.22,0.2), mat(0xdd1111,0.4,0.1,{emissive:new THREE.Color(0xaa0000),emissiveIntensity:0.3}));
+  body.castShadow=true; g.add(body);
+  // white cross — horizontal bar
+  const ch=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.055,0.025), mat(0xffffff,0.6));
+  ch.position.set(0,0,0.105); g.add(ch);
+  // white cross — vertical bar
+  const cv=new THREE.Mesh(new THREE.BoxGeometry(0.055,0.14,0.025), mat(0xffffff,0.6));
+  cv.position.set(0,0,0.105); g.add(cv);
+  // handle
+  const hnd=new THREE.Mesh(new THREE.TorusGeometry(0.05,0.012,8,20,Math.PI), mat(0xaaaaaa,0.3,0.7));
+  hnd.rotation.x=Math.PI; hnd.position.set(0,0.135,0); g.add(hnd);
+  // latch
+  const lat=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.02,0.015), mat(0x888888,0.3,0.8));
+  lat.position.set(0,-0.11,0.102); g.add(lat);
+  // pulsing glow light
+  const gl=new THREE.PointLight(0xff2200,0.6,1.2); gl.position.set(0,0,0); g.add(gl);
+  medkitGroup=g;
+  makeInt(g,'medkit','🩺 FIRST AID KIT — Click to use!');
+}
+
+// ── HELMET (proper hard hat shape) ──
+function buildHelmet(px, py, pz) {
+  const g=new THREE.Group(); g.position.set(px,py,pz); scene.add(g);
+  // dome — upper shell
+  const dome=new THREE.Mesh(new THREE.SphereGeometry(0.21,20,16,0,Math.PI*2,0,Math.PI*0.55), mat(0xff5500,0.35,0.25,{emissive:new THREE.Color(0xff3300),emissiveIntensity:0.2}));
+  dome.castShadow=true; g.add(dome);
+  // brim ring
+  const brim=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.26,0.035,28,1,true), mat(0xff4400,0.4,0.2));
+  brim.position.y=-0.035; g.add(brim);
+  // brim top disc
+  const brimTop=new THREE.Mesh(new THREE.RingGeometry(0.21,0.26,28), mat(0xff4400,0.4,0.2));
+  brimTop.rotation.x=-Math.PI/2; brimTop.position.y=-0.018; g.add(brimTop);
+  // reflective strip
+  const strip=new THREE.Mesh(new THREE.TorusGeometry(0.195,0.012,6,28), mat(0xffd700,0.2,0.8));
+  strip.rotation.x=Math.PI/2; strip.position.y=-0.005; g.add(strip);
+  // inner liner hint
+  const liner=new THREE.Mesh(new THREE.SphereGeometry(0.18,16,12,0,Math.PI*2,0,Math.PI*0.45), mat(0x2a2a2a,0.9));
+  g.add(liner);
+  // glow
+  const gl=new THREE.PointLight(0xff6600,0.5,1.5); g.add(gl);
+  helmetMesh=g;
+  makeInt(g,'helmet','⛑ SAFETY HELMET — Click to wear!');
+}
+
+// ── EXIT DOOR ──
+function buildExit(px, pz, ry=0) {
+  const g=new THREE.Group(); g.position.set(px,0,pz); g.rotation.y=ry; g.visible=false; scene.add(g);
+  // frame
+  const fm=mat(0x228844,0.4);
+  box(1.1,2.4,0.08,fm,0,1.2,0);
+  // door panel
+  const dp=new THREE.Mesh(new THREE.BoxGeometry(0.95,2.2,0.06), mat(0x1a6633,0.4,0.2));
+  dp.position.set(0,1.1,0); dp.castShadow=true; g.add(dp);
+  // EXIT sign above
+  const sign=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.25,0.05), mat(0x00cc44,0.3,0.1,{emissive:new THREE.Color(0x00aa33),emissiveIntensity:0.8}));
+  sign.position.set(0,2.55,0); g.add(sign);
+  // light
+  const el=new THREE.PointLight(0x00ff66,1.0,5); el.position.set(0,2.3,0.3); g.add(el);
+  makeInt(dp,'exit','🚪 EXIT Building — Click!');
+  exitGroup=g;
+}
+
+// ── DEBRIS ──
+function spawnDebris(spread, col=0x4a3020, count=14) {
+  for(let i=0;i<count;i++){
+    const m=new THREE.Mesh(
+      new THREE.BoxGeometry(0.08+Math.random()*0.2,0.03,0.07+Math.random()*0.16),
+      mat(col,1.0)
+    );
+    m.position.set((Math.random()-.5)*spread*2, 0.004, (Math.random()-.5)*spread*2);
+    m.rotation.y=Math.random()*Math.PI;
+    m.visible=false; scene.add(m); debrisMeshes.push(m);
+  }
+}
+
+function dropAll() {
+  fallingObjs.forEach(fo=>{
+    if(fo.done) return;
+    const sy=fo.mesh.position.y, dur=450+Math.random()*300, t0=performance.now();
+    const rx=(Math.random()-.5)*2.5, rz=(Math.random()-.5)*2.5;
+    const srx=fo.mesh.rotation.x, srz=fo.mesh.rotation.z;
+    const go=()=>{
+      if(fo.done) return;
+      const p=Math.min((performance.now()-t0)/dur,1);
+      const e=1-Math.pow(1-p,3);
+      fo.mesh.position.y=sy+(fo.ty-sy)*e;
+      fo.mesh.rotation.x=srx+rx*e; fo.mesh.rotation.z=srz+rz*e;
+      if(p<1) requestAnimationFrame(go); else fo.done=true;
+    }; go();
+  });
+  bigFalls.forEach(bf=>{
+    if(bf.done) return;
+    const sr=bf.mesh.rotation[bf.axis], dur=750+Math.random()*300, t0=performance.now();
+    const go=()=>{
+      if(bf.done) return;
+      const p=Math.min((performance.now()-t0)/dur,1);
+      const e=1-Math.pow(1-p,3);
+      bf.mesh.rotation[bf.axis]=sr+bf.tr*e;
+      if(p<1) requestAnimationFrame(go); else bf.done=true;
+    }; go();
+  });
+  debrisMeshes.forEach(d=>d.visible=true);
+}
+
+// ══════════════════════════════════════════════
+// FIRE — visual flames using particles
+// ══════════════════════════════════════════════
+const fireParticles=[];
+function createFireParticles(px,py,pz,count=40) {
+  const geo=new THREE.BufferGeometry();
+  const positions=new Float32Array(count*3);
+  const colors=new Float32Array(count*3);
+  for(let i=0;i<count;i++){
+    positions[i*3]=px+(Math.random()-.5)*0.5;
+    positions[i*3+1]=py+Math.random()*1.5;
+    positions[i*3+2]=pz+(Math.random()-.5)*0.5;
+    const t=Math.random();
+    colors[i*3]=1; colors[i*3+1]=t*0.6; colors[i*3+2]=0;
+  }
+  geo.setAttribute('position',new THREE.BufferAttribute(positions,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(colors,3));
+  const mat2=new THREE.PointsMaterial({size:0.18,vertexColors:true,transparent:true,opacity:0.9,sizeAttenuation:true});
+  const pts=new THREE.Points(geo,mat2);
+  pts.userData={px,py,pz,count,t0:performance.now()};
+  scene.add(pts);
+  fireParticles.push(pts);
+  return pts;
+}
+function updateFire() {
+  fireParticles.forEach(fp=>{
+    const pos=fp.geometry.attributes.position.array;
+    const col=fp.geometry.attributes.color.array;
+    const {px,py,pz,count}=fp.userData;
+    for(let i=0;i<count;i++){
+      pos[i*3+1]+=0.018+Math.random()*0.02;
+      pos[i*3]+=( Math.random()-.5)*0.015;
+      pos[i*3+2]+=( Math.random()-.5)*0.015;
+      if(pos[i*3+1]>py+2.2){
+        pos[i*3]=px+(Math.random()-.5)*0.5;
+        pos[i*3+1]=py;
+        pos[i*3+2]=pz+(Math.random()-.5)*0.5;
+      }
+      const h=( pos[i*3+1]-py)/2.2;
+      col[i*3]=1; col[i*3+1]=Math.max(0,(1-h)*0.7); col[i*3+2]=0;
+    }
+    fp.geometry.attributes.position.needsUpdate=true;
+    fp.geometry.attributes.color.needsUpdate=true;
+  });
+}
+
+// ══════════════════════════════════════════════
+// ENVIRONMENT: BEDROOM (earthquake)
+// ══════════════════════════════════════════════
+function buildBedroom() {
+  buildWalls(9,9,3.2,0x5c3d2e,0xd4c5b0);
+  // bed
+  box(2.0,0.45,3.2,mat(0x5a3d6b,0.9),-2.3,0.22,-2.5);
+  box(1.9,0.2,3.0,mat(0xf2e4e4,0.85),-2.3,0.56,-2.5);
+  box(2.0,0.9,0.14,mat(0x4a2f58,0.9),-2.3,0.78,-4.05);
+  // pillows
+  box(0.55,0.12,0.4,mat(0xffeeff,0.8),-2.7,0.7,-3.7);
+  box(0.55,0.12,0.4,mat(0xeeddff,0.8),-1.8,0.7,-3.7);
+  // nightstand
+  box(0.5,0.55,0.45,mat(0x8b6914,0.75),-3.35,0.27,- 3.3);
+  box(0.44,0.08,0.4,mat(0x7a5800,0.7),-3.35,0.55,-3.3);
+  // lamp on stand
+  cyl(0.03,0.03,0.4,8,mat(0xd4a820,0.5),-3.35,0.75,-3.3);
+  const shade=new THREE.Mesh(new THREE.ConeGeometry(0.16,0.22,12,1,true), mat(0xffe8a0,0.5));
+  shade.position.set(-3.35,1.0,-3.3); scene.add(shade);
+  fallingObjs.push({mesh:shade,ty:0.14,done:false});
+  // desk with cover spot
+  buildDesk(2.5,-1.8,1.7);
+  // bookshelf
+  const bs=box(1.2,2.2,0.32,mat(0x7b5e3a,0.8),-3.4,1.1,2.5);
+  bigFalls.push({mesh:bs,tr:1.0,done:false,axis:'x'});
+  // books on shelf
+  [0xc0392b,0x2980b9,0x27ae60,0x8e44ad,0xf39c12,0x16a085].forEach((c,i)=>{
+    const bk=box(0.1,0.28,0.24,mat(c,0.9),-3.55+i*0.19,1.88,2.45);
+    fallingObjs.push({mesh:bk,ty:0.07,done:false});
+  });
+  // wardrobe
+  const wd=box(0.95,2.5,1.2,mat(0x6b4228,0.9),3.1,1.25,2.4);
+  bigFalls.push({mesh:wd,tr:-0.85,done:false,axis:'z'});
+  // wardrobe handles
+  box(0.03,0.14,0.03,mat(0xb8860b,0.3,0.8),2.66,1.4,1.81);
+  box(0.03,0.14,0.03,mat(0xb8860b,0.3,0.8),3.54,1.4,1.81);
+  // window
+  const win=new THREE.Mesh(new THREE.BoxGeometry(0.07,1.6,2.0),
+    mat(0x87ceeb,0.1,0.1,{transparent:true,opacity:0.4}));
+  win.position.set(-4.42,1.85,0); scene.add(win);
+  box(0.05,1.75,2.15,mat(0xffffff,0.5),-4.44,1.85,0);
+  makeInt(win,'window','⚠ WINDOW HAZARD — Stay Back!');
+  // rug
+  plane(3.8,2.8,mat(0x8b2635,1.0),0,0.005,0.4,-Math.PI/2);
+  // monitor on desk
+  const mon=box(0.85,0.55,0.06,mat(0x111,0.2,0.6),2.5,0.99,-1.32);
+  fallingObjs.push({mesh:mon,ty:0.08,done:false});
+  // HELMET
+  buildHelmet(2.6, 0.83, -0.8);
+  // MEDKIT
+  buildMedkit(0, 0.04, 1.8);
+  // EXIT
+  buildExit(0,4.38,Math.PI);
+  spawnDebris(3.8,0x4a3020,12);
+  camera.position.set(0,1.6,2.5);
+  yaw=Math.PI; pitch=0; euler.set(pitch,yaw,0,'YXZ'); camera.quaternion.setFromEuler(euler);
+}
+
+// ══════════════════════════════════════════════
+// ENVIRONMENT: LIVING ROOM (earthquake)
+// ══════════════════════════════════════════════
+function buildLiving() {
+  buildWalls(10,10,3.4,0x6b4e31,0xc8b89a);
+  roomPt.position.set(0,3.2,0);
+  // sofa
+  box(3.0,0.65,1.0,mat(0x5a3060,0.95),-2.5,0.32,-2.0);
+  box(3.0,0.75,0.22,mat(0x4a2050,0.95),-2.5,0.72,-2.52);
+  box(0.25,0.75,1.05,mat(0x4a2050,0.95),-4.0,0.72,-2.0);
+  box(0.25,0.75,1.05,mat(0x4a2050,0.95),-1.0,0.72,-2.0);
+  // cushions
+  box(0.8,0.14,0.7,mat(0x8060a0,0.85),-3.1,0.68,-2.0);
+  box(0.8,0.14,0.7,mat(0x7050a0,0.85),-2.1,0.68,-2.0);
+  box(0.8,0.14,0.7,mat(0x6040a0,0.85),-1.6,0.68,-2.0);
+  // TV stand
+  box(2.0,0.5,0.5,mat(0x333,0.3,0.5),0,0.25,-4.6);
+  // TV
+  const tv=box(1.9,1.1,0.07,mat(0x111,0.1,0.8),0,1.2,-4.62);
+  fallingObjs.push({mesh:tv,ty:0.1,done:false});
+  // TV frame
+  box(1.98,1.18,0.05,mat(0x222,0.2,0.9),0,1.2,-4.63);
+  // coffee table (safe zone)
+  buildDesk(0.5, 0.5, 1.4);
+  // bookcase
+  const bc=box(0.45,2.5,1.8,mat(0x7b5e3a,0.8),4.1,1.25,-1.2);
+  bigFalls.push({mesh:bc,tr:-1.0,done:false,axis:'z'});
+  // books on bookcase
+  [0xc0392b,0x27ae60,0x2980b9,0x8e44ad].forEach((c,i)=>{
+    const bk=box(0.1,0.26,0.22,mat(c,0.9),3.88,2.02,-0.5+i*0.38);
+    fallingObjs.push({mesh:bk,ty:0.07,done:false});
+  });
+  // window L
+  const wl=new THREE.Mesh(new THREE.BoxGeometry(0.07,1.7,2.2),mat(0x87ceeb,0.1,0.1,{transparent:true,opacity:0.4}));
+  wl.position.set(4.93,1.9,1.2); scene.add(wl);
+  box(0.05,1.85,2.35,mat(0xffffff,0.5),4.95,1.9,1.2);
+  makeInt(wl,'window','⚠ WINDOW HAZARD — Stay Back!');
+  // plant
+  const pot=box(0.42,0.48,0.42,mat(0xc0855a,0.9),-4.2,0.24,2.5);
+  const plant=new THREE.Mesh(new THREE.SphereGeometry(0.3,14,14),mat(0x2d7a2d,0.95));
+  plant.position.set(-4.2,0.66,2.5); scene.add(plant);
+  // small plant leaves
+  const leaf=new THREE.Mesh(new THREE.SphereGeometry(0.18,10,10),mat(0x3a8a3a,0.95));
+  leaf.position.set(-4.0,0.68,2.3); scene.add(leaf);
+  fallingObjs.push({mesh:pot,ty:0.05,done:false});
+  fallingObjs.push({mesh:plant,ty:0.05,done:false});
+  // ceiling light
+  const cl=new THREE.Mesh(new THREE.SphereGeometry(0.18,16,16),mat(0xffe4a0,0.3,0.2));
+  cl.position.set(0,3.3,0); scene.add(cl);
+  fallingObjs.push({mesh:cl,ty:0.16,done:false});
+  // rug
+  plane(5.0,4.0,mat(0x8b3a2e,1.0),0,0.005,-0.2,-Math.PI/2);
+  // side table
+  box(0.5,0.52,0.45,mat(0x7b5e3a,0.7),3.0,0.26,2.0);
+  const vase=cyl(0.09,0.06,0.28,16,mat(0x4466cc,0.4,0.4),3.0,0.68,2.0);
+  fallingObjs.push({mesh:vase,ty:0.06,done:false});
+  // HELMET
+  buildHelmet(1.5, 0.5, 0.8);
+  // MEDKIT
+  buildMedkit(2.8, 0.04, 2.8);
+  // EXIT
+  buildExit(0,4.88,Math.PI);
+  spawnDebris(4.5,0x5a4030,14);
+  camera.position.set(0,1.6,3.0);
+  yaw=Math.PI; pitch=0; euler.set(pitch,yaw,0,'YXZ'); camera.quaternion.setFromEuler(euler);
+}
+
+// ══════════════════════════════════════════════
+// ENVIRONMENT: OFFICE (earthquake)
+// ══════════════════════════════════════════════
+function buildOffice() {
+  buildWalls(11,10,3.0,0x9c9c9c,0xd8d0c8);
+  roomPt.intensity=1.5;
+  // main desk
+  buildDesk(0,-1.0,2.1);
+  // monitor
+  const mon=box(1.0,0.62,0.07,mat(0x1a1a2e,0.2,0.6),0,1.0,-1.22);
+  fallingObjs.push({mesh:mon,ty:0.09,done:false});
+  box(0.8,0.05,0.4,mat(0x222,0.3,0.5),0,0.8,-1.1);
+  // keyboard
+  box(0.55,0.025,0.22,mat(0xcccccc,0.6),0,0.83,-0.65);
+  // mouse
+  box(0.09,0.025,0.13,mat(0xbbbbbb,0.5),0.33,0.83,-0.58);
+  // office chair
+  cyl(0.42,0.42,0.1,20,mat(0x1a1a1a,0.9),0,0.46,0.9);
+  cyl(0.04,0.04,0.55,8,mat(0x333,0.5),0,0.23,0.9);
+  box(0.8,0.6,0.1,mat(0x1a1a1a,0.9),0,0.85,1.23);
+  // filing cabinet
+  const fc=box(0.7,1.7,0.9,mat(0xaaa,0.3,0.5),3.4,0.85,-2.1);
+  bigFalls.push({mesh:fc,tr:-0.9,done:false,axis:'z'});
+  // cabinet handles
+  box(0.04,0.12,0.04,mat(0x888,0.3,0.8),3.08,0.75,-1.67);
+  box(0.04,0.12,0.04,mat(0x888,0.3,0.8),3.08,1.2,-1.67);
+  // shelf
+  box(0.07,0.06,1.8,mat(0xa07850,0.6),-4.8,1.6,0.8);
+  // cups on shelf
+  [0xc74c3c,0x3498db,0xf1c40f].forEach((c,i)=>{
+    const cup=cyl(0.08,0.07,0.21,12,mat(c,0.5),-4.72,1.72,0+i*0.55);
+    fallingObjs.push({mesh:cup,ty:0.11,done:false});
+  });
+  // 2nd desk (side)
+  box(1.4,0.07,0.8,mat(0x999,0.5),-3.5,0.76,1.5);
+  box(0.07,0.75,0.07,mat(0x888,0.5),-4.2,0.375,1.15);
+  box(0.07,0.75,0.07,mat(0x888,0.5),-2.82,0.375,1.15);
+  box(0.07,0.75,0.07,mat(0x888,0.5),-4.2,0.375,1.88);
+  box(0.07,0.75,0.07,mat(0x888,0.5),-2.82,0.375,1.88);
+  // laptop on side desk
+  const lap=box(0.55,0.03,0.4,mat(0x888,0.3,0.6),-3.5,0.82,1.5);
+  const lapScreen=box(0.54,0.36,0.02,mat(0x1a1a2e,0.2,0.7),-3.5,0.98,1.3);
+  lapScreen.rotation.x=-0.45;
+  fallingObjs.push({mesh:lap,ty:0.06,done:false});
+  // windows
+  [-2.2,2.2].forEach(z=>{
+    const w=new THREE.Mesh(new THREE.BoxGeometry(0.06,1.5,2.0),mat(0x87ceeb,0.1,0.1,{transparent:true,opacity:0.4}));
+    w.position.set(5.44,1.85,z); scene.add(w);
+    box(0.04,1.65,2.15,mat(0xffffff,0.5),5.46,1.85,z);
+    makeInt(w,'window','⚠ WINDOW HAZARD — Stay Back!');
+  });
+  // fluorescent lights
+  [-2.5,0,2.5].forEach(x=>{
+    const f=box(0.14,0.06,1.8,new THREE.MeshStandardMaterial({
+      color:0xfffde7,emissive:new THREE.Color(0xfffde7),emissiveIntensity:0.7
+    }),x,2.88,0);
+    f.name='fluor';
+  });
+  // whiteboard
+  box(2.5,1.4,0.05,mat(0xfafafa,0.9),-5.4,1.7,0);
+  // HELMET
+  buildHelmet(1.0, 0.84, -0.8);
+  // MEDKIT
+  buildMedkit(-2.5, 0.04, 2.5);
+  // EXIT
+  buildExit(0,4.88,Math.PI);
+  spawnDebris(4.5,0xaaaaaa,16);
+  camera.position.set(0,1.6,3.0);
+  yaw=Math.PI; pitch=0; euler.set(pitch,yaw,0,'YXZ'); camera.quaternion.setFromEuler(euler);
+}
+
+// ══════════════════════════════════════════════
+// ENVIRONMENT: FIRE — WAREHOUSE
+// ══════════════════════════════════════════════
+function buildFireWarehouse() {
+  scene.background=new THREE.Color(0x0d0500);
+  scene.fog=new THREE.Fog(0x150800,5,18);
+  buildWalls(12,12,5,0x555555,0x666666);
+  // concrete floor tiles
+  for(let x=-5;x<=5;x+=2) for(let z=-5;z<=5;z+=2) {
+    plane(1.9,1.9,mat(0x4a4a4a+(Math.random()*0x111|0),0.95),x,0.001,z,-Math.PI/2);
+  }
+  // ceiling beams
+  for(let z=-4;z<=4;z+=4){
+    box(12,0.25,0.35,mat(0x333,0.6),0,4.85,z);
+  }
+  for(let x=-4;x<=4;x+=4){
+    box(0.3,0.25,12,mat(0x333,0.6),x,4.85,0);
+  }
+  // industrial shelves
+  function shelf(px,pz,ry=0){
+    const g=new THREE.Group(); g.position.set(px,0,pz); g.rotation.y=ry; scene.add(g);
+    box(2.5,0.07,0.8,mat(0x888,0.4,0.6),0,0.5,0);
+    box(2.5,0.07,0.8,mat(0x888,0.4,0.6),0,1.5,0);
+    box(2.5,0.07,0.8,mat(0x888,0.4,0.6),0,2.5,0);
+    // uprights
+    [[-1.22,1.5,-0.38],[1.22,1.5,-0.38],[-1.22,1.5,0.38],[1.22,1.5,0.38]].forEach(([lx,ly,lz])=>{
+      const l=new THREE.Mesh(new THREE.BoxGeometry(0.05,3.05,0.05),mat(0x777,0.5,0.7));
+      l.position.set(lx,ly,lz); g.add(l);
+    });
+    // boxes on shelves
+    [0x884422,0x668833,0x446688,0x884466].forEach((c,i)=>{
+      box(0.55,0.5,0.6,mat(c,0.9),-0.9+i*0.6,0.78,0);
+    });
+    [0x774433,0x557733].forEach((c,i)=>{
+      const b=box(0.55,0.5,0.6,mat(c,0.9),-0.4+i*0.6,1.78,0);
+      bigFalls.push({mesh:b,tr:0.9,done:false,axis:'x'});
+    });
+    return g;
+  }
+  shelf(-4,-3); shelf(4,-3,Math.PI); shelf(-4,3); shelf(4,3,Math.PI);
+  // forklift (decoration)
+  box(1.8,1.0,3.0,mat(0xffaa00,0.6),3.5,0.5,1.0);
+  box(1.8,1.8,0.2,mat(0x222,0.4),3.5,0.9,-0.72);
+  box(0.1,1.5,0.08,mat(0xffaa00,0.5,0.6),3.1,1.25,-1.05);
+  box(0.1,1.5,0.08,mat(0xffaa00,0.5,0.6),3.9,1.25,-1.05);
+  // drums / barrels
+  [[-2,0.55,0],[−2.7,0.55,0.4],[-2,0.55,0.8]].forEach(([px,py,pz])=>{
+    cyl(0.24,0.24,0.7,16,mat(0x225588,0.5,0.3),px,py,pz);
+  });
+  // fire sources — multiple spots
+  const fireSources=[
+    [-3.5,0.1,-4.5],[3.5,0.1,-4.5],
+    [-5.8,0.1,0],[5.8,0.1,0],
+    [0,0.1,4.5],[-4,0.1,3]
+  ];
+  fireSources.forEach(([fx,fy,fz])=>{
+    createFireParticles(fx,fy,fz,50);
+    // fire glow light
+    const fl=new THREE.PointLight(0xff4400, 2.0, 5);
+    fl.position.set(fx,fy+1,fz); scene.add(fl);
+    firePt1=fl;
+    // burnt/charred floor circle
+    plane(1.4,1.4,mat(0x1a0800,0.98),fx,0.003,fz,-Math.PI/2);
+  });
+  // smoke columns (dark particle groups up high)
+  [-3,3].forEach(sx=>{
+    const geo=new THREE.BufferGeometry();
+    const cnt=30; const pos=new Float32Array(cnt*3);
+    for(let i=0;i<cnt;i++){pos[i*3]=sx+(Math.random()-.5)*1.5;pos[i*3+1]=3+Math.random()*1.5;pos[i*3+2]=(Math.random()-.5)*2;}
+    geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    const spts=new THREE.Points(geo,new THREE.PointsMaterial({color:0x221100,size:0.5,transparent:true,opacity:0.45}));
+    scene.add(spts);
+  });
+  // emergency exit
+  buildExit(-5.5,0,Math.PI/2);
+  // extinguisher (cover-type item for fire: use it to get to exit)
+  const eg=new THREE.Group(); eg.position.set(0,0.55,0); scene.add(eg);
+  cyl(0.1,0.1,0.55,16,mat(0xdd1111,0.3,0.2),0,0,0);
+  cyl(0.04,0.04,0.2,8,mat(0x888,0.3,0.7),0,0.34,0);
+  box(0.18,0.04,0.08,mat(0x888,0.3,0.8),0,0.42,0);
+  // hose
+  const hose=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.012,8,20,Math.PI*0.6),mat(0x222,0.8));
+  hose.rotation.z=Math.PI/2; hose.position.set(0.05,0.22,0.1); eg.add(hose);
+  const gl2=new THREE.PointLight(0xff3300,0.7,2); eg.add(gl2);
+  makeInt(eg,'cover','🧯 GRAB EXTINGUISHER & COVER — Click!');
+  coverSpot=eg;
+  // HELMET — actually a fire mask/respirator
+  buildHelmet(1.5, 0.04, 1.5);
+  // MEDKIT
+  buildMedkit(2.0, 0.04, -2.0);
+  // dim orange light for smoke
+  ambLight.color.setHex(0x331100);
+  roomPt.color.setHex(0xff6622); roomPt.intensity=0.6;
+  camera.position.set(0,1.6,3.0);
+  yaw=Math.PI; pitch=0; euler.set(pitch,yaw,0,'YXZ'); camera.quaternion.setFromEuler(euler);
+}
+
+// ══════════════════════════════════════════════
+// INTERACTION
+// ══════════════════════════════════════════════
+function interact(obj) {
+  const t=obj.userData.type;
+  if(t==='cover') {
+    if(covered){setMsg('✅','You are already sheltered!');return;}
+    covered=true; addScore(50); tick('ck-cover');
+    if(currentEnv==='fire'){
+      setMsg('🧯 GOOD!','You grabbed the extinguisher! Now find your protective mask and the EXIT!');
+      // Don't go under table for fire
+    } else {
+      coveringUnderTable=true; coverY=underTableY;
+      setMsg('✅ DROP & COVER!','DROP, COVER & HOLD ON! Stay under the desk until shaking stops!');
+    }
+    beep(660,.15,.3); setTimeout(()=>beep(880,.15,.25),150);
+    if(coverSpot&&coverSpot.material){coverSpot.material.color.setHex(0x00ff88);coverSpot.material.emissive=new THREE.Color(0x00ff88);}
+  }
+  else if(t==='helmet') {
+    if(helmetWorn) return;
+    helmetWorn=true; addScore(30); tick('ck-helmet');
+    obj.visible=false;
+    const ht=document.getElementById('helmet-hud');
+    ht.textContent=currentEnv==='fire'?'😷 MASK: ON':'⛑ HELMET: ON';
+    ht.classList.add('on');
+    setMsg(currentEnv==='fire'?'😷 Mask On':'⛑ Helmet On', currentEnv==='fire'
+      ?'Good! The respirator protects from smoke. NOW find the EXIT!'
+      :'Great! Hard hat protects from falling debris. Find the EXIT when it is safe!');
+    beep(880,.12,.25); setTimeout(()=>beep(1100,.12,.2),120);
+  }
+  else if(t==='medkit') {
+    if(healed){setMsg('🩺','Already used the medkit!');return;}
+    healed=true; addScore(40); tick('ck-heal');
+    setHealth(100-health);
+    if(medkitGroup) medkitGroup.visible=false;
+    setMsg('🩺 Healed!','Health restored! Now locate the glowing EXIT and evacuate!');
+    beep(550,.2,.3); setTimeout(()=>beep(660,.2,.25),200);
+  }
+  else if(t==='exit') {
+    if(phase!=='recovery'){setMsg('⚠','Disaster still active! Wait for the all-clear.');return;}
+    addScore(100); tick('ck-exit');
+    endGame(true);
+  }
+  else if(t==='window') {
+    if(shaking||burning){setHealth(-12);flashRed();setMsg('⚠ GLASS HAZARD!','Windows shatter! Deadly glass everywhere. Move AWAY immediately!');}
+    else setMsg('⚠ Window','Stay away from windows during disasters — glass can shatter violently.');
+  }
+}
+
+// ══════════════════════════════════════════════
+// EARTHQUAKE PHASE
+// ══════════════════════════════════════════════
+function startQuake() {
+  phase='quake'; shaking=true;
+  setPhase('⚠ EARTHQUAKE');
+  alarm();
+  T.push(setTimeout(()=>rumble(12),500));
+  document.getElementById('shake').classList.add('on');
+  setMsg('⚠ EARTHQUAKE!','DROP, COVER, HOLD ON! Get under the desk! Away from windows!');
+  roomPt.intensity=0.3; ambLight.intensity=0.2;
+
+  T.push(setTimeout(()=>{
+    dropAll(); crash();
+    if(!covered){setHealth(helmetWorn?-15:-28);flashRed();setMsg('💥 DEBRIS HIT!','Falling objects struck you! Get under the desk NOW!');}
+  },3000));
+  T.push(setTimeout(()=>{ if(!covered){setHealth(helmetWorn?-8:-18);flashRed();} },6500));
+
+  const wi=setInterval(()=>{
+    if(!shaking) return;
+    interactive.filter(o=>o.userData.type==='window').forEach(w=>{
+      const wp=new THREE.Vector3(); w.getWorldPosition(wp);
+      if(camera.position.distanceTo(wp)<1.9){setHealth(-7);flashRed();setMsg('⚠ TOO CLOSE!','Move away from windows!');}
+    });
+  },2200);
+  IV.push(wi);
+
+  T.push(setTimeout(()=>endDisaster(),12000));
+}
+
+// ══════════════════════════════════════════════
+// FIRE PHASE
+// ══════════════════════════════════════════════
+function startFire() {
+  phase='quake'; burning=true;
+  setPhase('🔥 FIRE EMERGENCY');
+  fireAlarm();
+  document.getElementById('shake').classList.add('fire');
+  document.getElementById('smoke-overlay').classList.add('on');
+  scene.fog=new THREE.Fog(0x0d0500,4,14); // denser smoke
+  setMsg('🔥 FIRE!','Building is on fire! Grab the extinguisher to buy time, wear your mask, find the EXIT!');
+  roomPt.intensity=0.2; ambLight.color.setHex(0x331100);
+
+  // Smoke damage every 3s if no mask
+  const fi=setInterval(()=>{
+    if(!burning) return;
+    if(!helmetWorn){setHealth(-8);flashRed();setMsg('☁ SMOKE INHALATION!','You need a respirator mask! Find it quickly!');}
+    else setHealth(-3);
+  },3500);
+  IV.push(fi);
+
+  T.push(setTimeout(()=>{
+    if(!covered){setHealth(-20);flashRed();setMsg('🔥 CAUGHT IN FLAMES!','Get to the extinguisher and crouch low — smoke rises!');}
+  },4000));
+
+  T.push(setTimeout(()=>endDisaster(),15000));
+}
+
+function endDisaster() {
+  shaking=false; burning=false; phase='recovery';
+  document.getElementById('shake').classList.remove('on','fire');
+  IV.forEach(clearInterval); IV.length=0;
+  roomPt.intensity=0.5; ambLight.intensity=0.3; redPt.intensity=0;
+  setPhase('Recovery');
+  if(!covered&&!helmetWorn) setHealth(-10);
+  setMsg('All Clear','Find and use the FIRST AID KIT, then locate the EXIT to evacuate!');
+  beep(220,.4,.2);
+  T.push(setTimeout(()=>{
+    if(medkitGroup){ medkitGroup.visible=true; }
+    setMsg('🩺 Medkit Nearby','First aid kit is available. Treat injuries, then EXIT the building!');
+  },1500));
+  T.push(setTimeout(()=>{
+    if(exitGroup) exitGroup.visible=true;
+    setMsg('🚪 EXIT Unlocked','Emergency exit is open! Navigate carefully and evacuate NOW!');
+  },3500));
+}
+
+// ══════════════════════════════════════════════
+// END GAME
+// ══════════════════════════════════════════════
+function endGame(won, reason='') {
+  phase='end'; shaking=false; burning=false;
+  document.getElementById('shake').classList.remove('on','fire');
+  T.forEach(clearTimeout); IV.forEach(clearInterval);
+  const mo=document.getElementById('modal'); mo.classList.add('on');
+  const ti=document.getElementById('modal-title'), bd=document.getElementById('modal-body');
+  document.getElementById('modal-score').textContent='Score: '+score;
+  if(won){
+    ti.textContent='✓ SURVIVED'; ti.className='win';
+    const tips=[];
+    if(!covered) tips.push('• Always DROP and COVER under a sturdy surface immediately.');
+    if(!helmetWorn) tips.push('• Always wear head protection — it saves lives.');
+    if(!healed) tips.push('• Treat injuries before evacuating when it is safe to do so.');
+    bd.textContent='You successfully evacuated!\n\n'+(tips.length?'Tips for next time:\n'+tips.join('\n'):'Perfect protocol — excellent performance!');
+    beep(440,.15,.3); setTimeout(()=>beep(554,.15,.3),180); setTimeout(()=>beep(659,.25,.35),360);
+  } else {
+    ti.textContent='✗ FAILED'; ti.className='lose';
+    bd.textContent='You did not survive.\n\nRemember:\n• DROP to the ground immediately\n• COVER under a sturdy desk or table\n• HOLD ON until all shaking / hazards stop\n• Never stand near windows\n• In fire: stay low, move fast, find the exit';
+    beep(220,.5,.4);
+  }
+}
+
+// ══════════════════════════════════════════════
+// RENDER LOOP
+// ══════════════════════════════════════════════
+let lastTs=0;
+function loop(ts){
+  requestAnimationFrame(loop);
+  const dt=Math.min((ts-lastTs)/1000,.05); lastTs=ts;
+  handleMovement(dt);
+
+  if(shaking){
+    camera.position.x+=(Math.random()-.5)*0.05;
+    camera.position.z+=(Math.random()-.5)*0.05;
+    redPt.intensity=0.1+Math.random()*0.2;
+    ambLight.color.setRGB(0.3+Math.random()*0.1,0.08,0.04);
+    scene.traverse(o=>{if(o.name==='fluor')o.material.emissiveIntensity=Math.random()>.4?.7:0;});
+  } else if(burning) {
+    ambLight.color.setRGB(0.22+Math.random()*0.05,0.06+Math.random()*0.02,0.0);
+    if(firePt1) firePt1.intensity=1.8+Math.random()*0.8;
+  } else {
+    ambLight.color.setHex(currentEnv==='fire'?0x220800:0x443322);
+  }
+
+  if(burning) updateFire();
+
+  // Pulse cover spot
+  if(coverSpot&&!covered&&coverSpot.material){
+    const p=Math.sin(ts*0.003)*0.15+0.32;
+    if(coverSpot.material.opacity!==undefined) coverSpot.material.opacity=p;
+    coverSpot.position.y=0.04+Math.sin(ts*0.004)*0.008;
+  }
+
+  // Medkit glow pulse
+  if(medkitGroup&&medkitGroup.visible){
+    medkitGroup.traverse(c=>{if(c.isPointLight) c.intensity=0.4+Math.sin(ts*0.005)*0.3;});
+  }
+  // Helmet glow pulse
+  if(helmetMesh&&!helmetWorn){
+    helmetMesh.traverse(c=>{if(c.isPointLight) c.intensity=0.4+Math.sin(ts*0.004)*0.25;});
+  }
+
+  const h=getHit();
+  setTip(h&&h.userData.label?h.userData.label:'');
+  renderer.render(scene,camera);
+}
+requestAnimationFrame(loop);
+
+// ══════════════════════════════════════════════
+// SPLASH CONTROLS
+// ══════════════════════════════════════════════
+let chosenEnv='bedroom';
+document.querySelectorAll('.env-btn').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('.env-btn').forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); chosenEnv=b.dataset.e;
+  });
+});
+
+document.getElementById('go').addEventListener('click',()=>{
+  audio();
+  let env=chosenEnv;
+  if(env==='random') env=['bedroom','living','office','fire'][Math.floor(Math.random()*4)];
+  currentEnv=env;
+
+  clearAll();
+  buildLights(env!=='fire');
+
+  if(env==='bedroom')     buildBedroom();
+  else if(env==='living') buildLiving();
+  else if(env==='office') buildOffice();
+  else                    buildFireWarehouse();
+
+  document.getElementById('splash').classList.add('hide');
+  document.getElementById('hud').classList.add('on');
+
+  // Update checklist label for fire
+  if(env==='fire'){
+    document.getElementById('ck-cover').textContent='Grab Extinguisher';
+    document.getElementById('ck-helmet').textContent='Wear Respirator Mask';
+    document.getElementById('ck-exit').textContent='Exit the Warehouse';
+    document.getElementById('helmet-hud').textContent='😷 MASK: OFF';
+  }
+
+  setPhase('Exploring');
+  setMsg('Look Around', `You are in a ${env==='fire'?'warehouse':env}. Find the glowing SAFE ZONE, the orange HELMET${env==='fire'?' / mask':''}, and note the EXIT. Disaster begins soon!`);
+
+  T.push(setTimeout(()=>setMsg('⚠ Warning', env==='fire'
+    ?'Smoke detected! A fire is starting. Locate the extinguisher and your respirator!'
+    :'Seismic activity detected! Get to the glowing SAFE ZONE under the desk!'),5000));
+  T.push(setTimeout(()=>{setMsg('⚠ IMMINENT!','Brace yourself!');beep(330,.3,.3);},7000));
+  T.push(setTimeout(()=>{ if(env==='fire') startFire(); else startQuake(); },8500));
+});
+
+document.getElementById('modal-btn').addEventListener('click',()=>location.reload());
+</script>
+</body>
+</html>
